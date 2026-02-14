@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
-"""🧠 Intrusive Thoughts Dashboard v2 — System health deep-dive & memory explorer."""
+"""🧠 Intrusive Thoughts Dashboard v2 — Interactive tuning controls."""
 
 import json
 import os
+import subprocess
 from http.server import HTTPServer, SimpleHTTPRequestHandler
 from datetime import datetime
 from collections import Counter
@@ -12,6 +13,9 @@ from config import get_file_path, get_data_dir, get_dashboard_port, get_agent_na
 PORT = get_dashboard_port()
 HISTORY_FILE = get_file_path("history.json")
 THOUGHTS_FILE = get_file_path("thoughts.json")
+MOODS_FILE = get_file_path("moods.json")
+TODAY_MOOD_FILE = get_file_path("today_mood.json")
+TODAY_SCHEDULE_FILE = get_file_path("today_schedule.json")
 PICKS_LOG = get_data_dir() / "log" / "picks.log"
 
 
@@ -42,6 +46,24 @@ def load_thoughts():
     except:
         return {}
 
+
+def load_moods():
+    try:
+        return json.loads(MOODS_FILE.read_text())
+    except:
+        return {}
+
+
+def save_thoughts(data):
+    """Save updated thoughts data."""
+    THOUGHTS_FILE.write_text(json.dumps(data, indent=2))
+
+
+def save_today_mood(data):
+    """Save updated today mood data."""
+    TODAY_MOOD_FILE.write_text(json.dumps(data, indent=2))
+
+
 def load_mood_history():
     try:
         data = json.loads(get_file_path("mood_history.json").read_text())
@@ -49,11 +71,13 @@ def load_mood_history():
     except:
         return []
 
+
 def load_streaks():
     try:
         return json.loads(get_file_path("streaks.json").read_text())
     except:
         return {"current_streaks": {}}
+
 
 def load_achievements():
     try:
@@ -61,17 +85,42 @@ def load_achievements():
     except:
         return {"earned": [], "total_points": 0}
 
+
 def load_soundtracks():
     try:
         return json.loads(get_file_path("soundtracks.json").read_text())
     except:
         return {}
 
+
 def load_today_mood():
     try:
-        return json.loads(get_file_path("today_mood.json").read_text())
+        return json.loads(TODAY_MOOD_FILE.read_text())
     except:
         return {}
+
+
+def load_today_schedule():
+    try:
+        return json.loads(TODAY_SCHEDULE_FILE.read_text())
+    except:
+        return {}
+
+
+def load_presets():
+    """Load all preset files."""
+    presets = []
+    presets_dir = Path(__file__).parent / "presets"
+    if presets_dir.exists():
+        for preset_file in presets_dir.glob("*.json"):
+            try:
+                data = json.loads(preset_file.read_text())
+                data["filename"] = preset_file.name
+                presets.append(data)
+            except:
+                continue
+    return presets
+
 
 def load_journal_entries():
     try:
@@ -87,6 +136,7 @@ def load_journal_entries():
     except:
         return []
 
+
 def get_productivity_stats():
     try:
         import subprocess
@@ -98,17 +148,64 @@ def get_productivity_stats():
         pass
     return {"insights": [], "moods": {}}
 
+
+def trigger_impulse():
+    """Run intrusive.sh day command and return result."""
+    try:
+        result = subprocess.run(['./intrusive.sh', 'day'], 
+                              cwd=Path(__file__).parent,
+                              capture_output=True, text=True, timeout=30)
+        return {"success": True, "output": result.stdout, "error": result.stderr}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
+def get_effective_weight(thought_weight, thought_id, today_mood_data, moods_data):
+    """Calculate effective weight with mood modifiers."""
+    if not today_mood_data or not moods_data:
+        return thought_weight
+    
+    mood_id = today_mood_data.get("id")
+    if not mood_id:
+        return thought_weight
+    
+    # Find the mood data
+    mood_info = None
+    for mood in moods_data.get("base_moods", []):
+        if mood["id"] == mood_id:
+            mood_info = mood
+            break
+    
+    if not mood_info:
+        return thought_weight
+    
+    # Simple modifier based on whether thought appears in boosted/dampened traits
+    boosted_traits = today_mood_data.get("boosted_traits", [])
+    dampened_traits = today_mood_data.get("dampened_traits", [])
+    
+    modifier = 1.0
+    if thought_id in boosted_traits:
+        modifier = 1.5
+    elif thought_id in dampened_traits:
+        modifier = 0.7
+    
+    return round(thought_weight * modifier, 2)
+
+
 def build_html():
     history = load_history()
     picks = load_picks()
     thoughts = load_thoughts()
+    moods_data = load_moods()
+    today_mood = load_today_mood()
     mood_history = load_mood_history()
     streaks = load_streaks()
     achievements = load_achievements()
     soundtracks = load_soundtracks()
-    today_mood = load_today_mood()
     journal_entries = load_journal_entries()
     productivity_stats = get_productivity_stats()
+    presets = load_presets()
+    schedule = load_today_schedule()
 
     # Stats
     thought_counts = Counter(p.get("thought", "?") for p in picks)
@@ -122,14 +219,17 @@ def build_html():
     # Recent history
     recent = history[-20:][::-1]
 
-    # Build thought catalog
+    # Build thought catalog with effective weights
     all_thoughts = []
     for mood_name, mood_data in thoughts.get("moods", {}).items():
         for t in mood_data.get("thoughts", []):
+            weight = t.get("weight", 1)
+            effective_weight = get_effective_weight(weight, t["id"], today_mood, moods_data)
             all_thoughts.append({
                 "id": t["id"],
                 "mood": mood_name,
-                "weight": t.get("weight", 1),
+                "weight": weight,
+                "effective_weight": effective_weight,
                 "prompt": t["prompt"],
                 "times_picked": thought_counts.get(t["id"], 0),
             })
@@ -158,9 +258,9 @@ def build_html():
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>🧠 Intrusive Thoughts Dashboard v2</title>
+<title>🧠 Intrusive Thoughts v2</title>
 <style>
-  :root {{ --bg: #0a0a0f; --card: #12121a; --border: #1e1e2e; --text: #c9c9d9; --accent: #f59e0b; --accent2: #8b5cf6; --dim: #555568; --success: #22c55e; --warning: #eab308; }}
+  :root {{ --bg: #0a0a0f; --card: #12121a; --border: #1e1e2e; --text: #c9c9d9; --accent: #f59e0b; --accent2: #8b5cf6; --dim: #555568; --success: #22c55e; --warning: #eab308; --danger: #ef4444; }}
   * {{ margin: 0; padding: 0; box-sizing: border-box; }}
   body {{ background: var(--bg); color: var(--text); font-family: 'SF Mono', 'Fira Code', monospace; padding: 2rem; max-width: 1400px; margin: 0 auto; }}
   h1 {{ color: var(--accent); font-size: 1.8rem; margin-bottom: 0.3rem; }}
@@ -198,107 +298,57 @@ def build_html():
   .journal-date {{ color: var(--accent); font-size: 0.85rem; margin-bottom: 0.5rem; }}
   .journal-content {{ font-size: 0.9rem; line-height: 1.4; }}
   .insight-item {{ background: var(--border); padding: 0.8rem; border-radius: 8px; margin-bottom: 0.5rem; font-size: 0.9rem; }}
-  .soundtrack {{ background: linear-gradient(135deg, var(--accent2), var(--accent)); padding: 1rem; border-radius: 12px; text-align: center; color: white; }}
-  
-  /* Dashboard v2 Styles */
-  .tab-nav {{ display: flex; margin-bottom: 1rem; border-bottom: 1px solid var(--border); }}
-  .tab-button {{ background: none; border: none; color: var(--dim); padding: 0.8rem 1rem; cursor: pointer; font-size: 0.85rem; border-bottom: 2px solid transparent; }}
-  .tab-button:hover {{ color: var(--text); background: var(--border); }}
-  .tab-button.active {{ color: var(--accent); border-bottom-color: var(--accent); }}
-  .tab-content {{ display: none; }}
-  .tab-content.active {{ display: block; }}
-  
-  /* Memory Explorer */
-  .memory-controls {{ display: flex; gap: 1rem; align-items: center; margin-bottom: 1rem; }}
-  .memory-controls input {{ flex: 1; padding: 0.5rem; background: var(--border); border: 1px solid var(--border); border-radius: 4px; color: var(--text); }}
-  .memory-stats {{ display: flex; gap: 1rem; font-size: 0.8rem; }}
-  .memory-stat {{ color: var(--dim); }}
-  .memory-list {{ max-height: 400px; overflow-y: auto; }}
-  .memory-item {{ background: var(--border); padding: 1rem; border-radius: 8px; margin-bottom: 0.8rem; }}
-  .memory-header {{ display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; }}
-  .memory-type {{ background: var(--accent2); color: white; padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.7rem; text-transform: uppercase; }}
-  .memory-timestamp {{ color: var(--dim); font-size: 0.75rem; }}
-  .memory-content {{ margin-bottom: 0.5rem; font-size: 0.9rem; }}
-  .memory-strength-bar {{ position: relative; height: 6px; background: var(--bg); border-radius: 3px; margin-bottom: 0.5rem; }}
-  .strength-fill {{ height: 100%; border-radius: 3px; transition: width 0.3s; }}
-  .strength-label {{ font-size: 0.7rem; color: var(--dim); }}
-  .memory-emotion, .memory-importance {{ font-size: 0.75rem; color: var(--dim); }}
-  
-  /* Trust Dashboard */
-  .trust-gauge-container {{ text-align: center; margin: 1rem 0; }}
-  .trust-gauge svg {{ max-width: 200px; }}
-  .trust-score {{ font-size: 24px; font-weight: bold; fill: var(--text); }}
-  .trust-breakdown {{ margin: 1rem 0; }}
-  .trust-breakdown h3, .trust-events h3 {{ color: var(--accent2); margin-bottom: 0.8rem; }}
-  .trust-category {{ display: flex; align-items: center; margin-bottom: 0.5rem; }}
-  .category-name {{ width: 120px; font-size: 0.85rem; }}
-  .category-bar {{ flex: 1; height: 20px; background: var(--bg); border-radius: 4px; position: relative; }}
-  .category-fill {{ height: 100%; border-radius: 4px; }}
-  .category-percent {{ position: absolute; right: 5px; top: 2px; font-size: 0.7rem; color: var(--text); }}
-  .trust-events {{ margin-top: 1rem; }}
-  .trust-event {{ display: flex; gap: 0.5rem; padding: 0.5rem 0; border-bottom: 1px solid var(--border); }}
-  .trust-event:last-child {{ border-bottom: none; }}
-  .event-time {{ font-size: 0.75rem; color: var(--dim); width: 120px; flex-shrink: 0; }}
-  .event-outcome {{ width: 20px; }}
-  .event-description {{ font-size: 0.85rem; }}
-  
-  /* Evolution History */
-  .evolution-summary {{ display: flex; gap: 1rem; margin-bottom: 1rem; }}
-  .evolution-stat {{ background: var(--border); padding: 0.8rem; border-radius: 6px; font-size: 0.85rem; }}
-  .evolution-timeline {{ margin: 1rem 0; }}
-  .evolution-timeline h3, .evolution-patterns h3 {{ color: var(--accent2); margin-bottom: 0.8rem; }}
-  .evolution-cycle {{ background: var(--border); padding: 0.8rem; border-radius: 6px; margin-bottom: 0.5rem; }}
-  .cycle-date {{ font-weight: bold; color: var(--accent); margin-bottom: 0.3rem; }}
-  .cycle-stats {{ font-size: 0.8rem; color: var(--dim); }}
-  .evolution-patterns {{ margin-top: 1rem; }}
-  .evolution-pattern {{ background: var(--border); padding: 0.8rem; border-radius: 6px; margin-bottom: 0.5rem; }}
-  .pattern-type {{ font-weight: bold; color: var(--accent); margin-bottom: 0.3rem; }}
-  .pattern-desc {{ margin-bottom: 0.3rem; font-size: 0.9rem; }}
-  .pattern-confidence {{ font-size: 0.75rem; color: var(--dim); }}
-  
-  /* Proactive Agent */
-  .proactive-stats-grid {{ display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem; }}
-  .proactive-wal, .proactive-buffer {{ background: var(--border); padding: 1rem; border-radius: 8px; }}
-  .proactive-wal h3, .proactive-buffer h3 {{ color: var(--accent2); margin-bottom: 0.8rem; }}
-  .wal-stat, .buffer-stat {{ margin-bottom: 0.3rem; font-size: 0.85rem; }}
-  .buffer-items {{ margin-top: 0.8rem; }}
-  .buffer-item {{ background: var(--bg); padding: 0.5rem; border-radius: 4px; margin-bottom: 0.3rem; display: flex; gap: 0.5rem; align-items: center; }}
-  .item-priority {{ padding: 0.2rem 0.4rem; border-radius: 3px; font-size: 0.7rem; text-transform: uppercase; color: white; }}
-  .item-priority.high {{ background: #ef4444; }}
-  .item-priority.medium {{ background: var(--warning); }}
-  .item-priority.low {{ background: var(--dim); }}
-  .item-content {{ font-size: 0.8rem; }}
-  .proactive-recent {{ margin-top: 1rem; }}
-  .proactive-recent h3 {{ color: var(--accent2); margin-bottom: 0.8rem; }}
-  .proactive-entry {{ display: flex; gap: 0.5rem; padding: 0.5rem 0; border-bottom: 1px solid var(--border); }}
-  .proactive-entry:last-child {{ border-bottom: none; }}
-  .entry-time {{ font-size: 0.75rem; color: var(--dim); width: 120px; flex-shrink: 0; }}
-  .entry-outcome {{ width: 20px; }}
-  .entry-content {{ font-size: 0.85rem; }}
-  
-  /* Health Monitor */
-  .health-components {{ margin-bottom: 1rem; }}
-  .health-components h3, .health-metrics h3, .health-incidents h3 {{ color: var(--accent2); margin-bottom: 0.8rem; }}
-  .health-component {{ display: flex; align-items: center; gap: 1rem; padding: 0.8rem; background: var(--border); border-radius: 6px; margin-bottom: 0.5rem; }}
-  .component-status {{ font-size: 1.2rem; }}
-  .component-name {{ font-weight: bold; }}
-  .component-message {{ color: var(--dim); font-size: 0.85rem; }}
-  .health-metrics {{ margin-bottom: 1rem; }}
-  .health-metric {{ margin-bottom: 0.3rem; font-size: 0.85rem; }}
-  .health-incident {{ display: flex; gap: 0.5rem; padding: 0.5rem 0; border-bottom: 1px solid var(--border); }}
-  .health-incident:last-child {{ border-bottom: none; }}
-  .incident-id {{ font-weight: bold; color: var(--accent); width: 80px; flex-shrink: 0; }}
-  .incident-status {{ width: 20px; }}
-  .incident-desc {{ font-size: 0.85rem; }}
-  
+  .soundtrack {{ background: linear-gradient(135deg, var(--accent2), var(--accent)); padding: 1rem; border-radius: 12px; text-align: center; color: white; margin-bottom: 2rem; }}
+
+  /* NEW v2 STYLES */
+  .weight-editor {{ display: flex; align-items: center; gap: 1rem; padding: 0.8rem 0; border-bottom: 1px solid var(--border); }}
+  .weight-editor:last-child {{ border: none; }}
+  .weight-editor .thought-info {{ flex: 1; }}
+  .weight-editor .thought-id {{ color: var(--accent); font-size: 0.9rem; font-weight: bold; }}
+  .weight-editor .thought-prompt {{ color: var(--text); font-size: 0.8rem; margin-top: 0.2rem; }}
+  .weight-editor .weight-controls {{ display: flex; align-items: center; gap: 0.5rem; }}
+  .weight-input {{ background: var(--border); color: var(--text); border: 1px solid var(--dim); border-radius: 6px; padding: 0.4rem; width: 70px; text-align: center; }}
+  .weight-bar {{ height: 8px; background: linear-gradient(90deg, var(--accent2), var(--accent)); border-radius: 4px; min-width: 4px; }}
+  .save-btn {{ background: var(--success); color: white; border: none; padding: 0.4rem 0.8rem; border-radius: 6px; cursor: pointer; font-size: 0.8rem; }}
+  .save-btn:hover {{ opacity: 0.8; }}
+  .save-btn:disabled {{ background: var(--dim); cursor: not-allowed; }}
+
+  .mood-selector {{ display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem; }}
+  .mood-dropdown {{ background: var(--border); color: var(--text); border: 1px solid var(--dim); border-radius: 6px; padding: 0.5rem; }}
+  .set-mood-btn, .trigger-btn {{ background: var(--accent2); color: white; border: none; padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer; }}
+  .set-mood-btn:hover, .trigger-btn:hover {{ opacity: 0.8; }}
+  .trigger-result {{ background: var(--border); padding: 1rem; border-radius: 8px; margin-top: 1rem; font-family: monospace; font-size: 0.8rem; white-space: pre-wrap; }}
+
+  .mood-viewer {{ margin-bottom: 1.5rem; }}
+  .mood-viewer h3 {{ color: var(--accent); font-size: 1rem; margin-bottom: 0.5rem; }}
+  .mood-traits {{ display: flex; flex-wrap: wrap; gap: 0.3rem; margin-bottom: 0.8rem; }}
+  .mood-traits .boost {{ background: var(--success); color: white; padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.7rem; }}
+  .mood-traits .dampen {{ background: var(--danger); color: white; padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.7rem; }}
+
+  .schedule-item {{ display: flex; align-items: center; gap: 1rem; padding: 0.5rem; border-radius: 6px; margin-bottom: 0.5rem; }}
+  .schedule-item.fired {{ background: var(--border); }}
+  .schedule-item.upcoming {{ background: var(--success); color: white; }}
+  .schedule-time {{ font-weight: bold; min-width: 60px; }}
+  .schedule-status {{ font-size: 0.8rem; padding: 0.2rem 0.5rem; border-radius: 4px; }}
+  .status-fired {{ background: var(--dim); color: white; }}
+  .status-upcoming {{ background: var(--warning); color: black; }}
+
+  .preset-item {{ background: var(--border); padding: 1rem; border-radius: 8px; margin-bottom: 1rem; }}
+  .preset-header {{ display: flex; justify-content: space-between; align-items: start; margin-bottom: 0.5rem; }}
+  .preset-name {{ color: var(--accent); font-weight: bold; }}
+  .preset-desc {{ color: var(--text); font-size: 0.9rem; margin-bottom: 0.5rem; }}
+  .preset-weights {{ color: var(--dim); font-size: 0.8rem; }}
+  .apply-btn {{ background: var(--accent); color: white; border: none; padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer; }}
+  .apply-btn:hover {{ opacity: 0.8; }}
+
   footer {{ text-align: center; color: var(--dim); font-size: 0.75rem; margin-top: 2rem; }}
 </style>
 </head>
 <body>
-<h1>🧠 Intrusive Thoughts Dashboard v2</h1>
-<p class="subtitle">System health deep-dive & memory explorer — now with full system visibility</p>
+<h1>🧠 Intrusive Thoughts v2</h1>
+<p class="subtitle">Interactive tuning controls — now with weight editing, mood overrides, and preset management</p>
 
-{f'<div class="soundtrack">{today_soundtrack}</div><br>' if today_soundtrack else ''}
+{f'<div class="soundtrack">{today_soundtrack}</div>' if today_soundtrack else ''}
 
 <div class="grid">
   <div class="stat-card"><div class="number">{total_picks}</div><div class="label">Total Impulses</div></div>
@@ -306,6 +356,98 @@ def build_html():
   <div class="stat-card"><div class="number">{len(achievements.get('earned', []))}</div><div class="label">🏆 Achievements</div></div>
   <div class="stat-card"><div class="number">{achievements.get('total_points', 0)}</div><div class="label">🎯 Points</div></div>
 </div>
+
+<!-- NEW v2 SECTIONS -->
+
+<div class="grid-2">
+  <div class="section">
+    <h2>🎛️ Thought Weight Editor</h2>
+    <div id="weight-editor">
+      {''.join(f'''
+      <div class="weight-editor">
+        <div class="thought-info">
+          <div class="thought-id">{t["id"]}</div>
+          <div class="thought-prompt">{t["prompt"][:80]}{'...' if len(t["prompt"]) > 80 else ''}</div>
+        </div>
+        <div class="weight-controls">
+          <span style="font-size: 0.8rem; color: var(--dim);">Base: {t["weight"]}</span>
+          <input type="number" class="weight-input" value="{t["weight"]}" min="0.1" max="3.0" step="0.1" data-thought-id="{t["id"]}" data-mood="{t["mood"]}">
+          <span style="font-size: 0.8rem; color: var(--accent);">Effective: {t["effective_weight"]}</span>
+          <div class="weight-bar" style="width: {min(t["effective_weight"] * 30, 100)}px;"></div>
+          <button class="save-btn" onclick="saveWeight('{t["id"]}', '{t["mood"]}')">Save</button>
+        </div>
+      </div>
+      ''' for t in all_thoughts)}
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>🌊 Mood Boost/Dampen Viewer</h2>
+    {''.join(f'''
+    <div class="mood-viewer">
+      <h3>{mood.get("emoji", "")} {mood.get("name", "")} (weight: {mood.get("weight", 1)})</h3>
+      <div class="mood-traits">
+        {f'<span class="boost">Boosted: {", ".join(mood.get("traits", []))}</span>' if mood.get("traits") else ''}
+      </div>
+    </div>
+    ''' for mood in moods_data.get("base_moods", [])) if moods_data.get("base_moods") else '<div class="empty">No mood data available</div>'}
+  </div>
+</div>
+
+<div class="grid-2">
+  <div class="section">
+    <h2>🎯 Live Mood Override</h2>
+    <div class="mood-selector">
+      <select class="mood-dropdown" id="mood-select">
+        <option value="">Select mood...</option>
+        {''.join(f'<option value="{mood["id"]}" {"selected" if today_mood.get("id") == mood["id"] else ""}>{mood["emoji"]} {mood["name"]}</option>' for mood in moods_data.get("base_moods", []))}
+      </select>
+      <button class="set-mood-btn" onclick="setMood()">Set Mood</button>
+      <button class="trigger-btn" onclick="triggerImpulse()">Trigger Impulse Now</button>
+    </div>
+    <div id="current-mood">
+      {f'<strong>Current:</strong> {today_mood.get("emoji", "")} {today_mood.get("name", "None")} ({today_mood.get("date", "")})<br><em>{today_mood.get("description", "")}</em>' if today_mood else '<em>No mood set for today</em>'}
+    </div>
+    <div id="trigger-result"></div>
+  </div>
+
+  <div class="section">
+    <h2>📅 Today's Schedule</h2>
+    <div id="schedule-viewer">
+      {f'''
+      <div style="margin-bottom: 1rem; color: var(--dim); font-size: 0.8rem;">Generated: {schedule.get("generated_at", "Unknown")}</div>
+      {''.join(f"""
+      <div class="schedule-item {'fired' if item.get('fired') else 'upcoming'}">
+        <div class="schedule-time">{item.get('time', '??:??')}</div>
+        <div style="flex: 1;">{item.get('thought_type', 'Unknown')}</div>
+        <div class="schedule-status {'status-fired' if item.get('fired') else 'status-upcoming'}">
+          {'Fired' if item.get('fired') else 'Upcoming'}
+        </div>
+      </div>
+      """ for item in schedule.get('schedule', []))}
+      ''' if schedule.get('schedule') else '<div class="empty">No schedule available. Run morning ritual to generate.</div>'}
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h2>🎨 Preset Browser</h2>
+  <div id="preset-browser">
+    {''.join(f'''
+    <div class="preset-item">
+      <div class="preset-header">
+        <div>
+          <div class="preset-name">{preset.get("emoji", "⚙️")} {preset.get("name", "Unnamed")}</div>
+        </div>
+        <button class="apply-btn" onclick="applyPreset('{preset.get("filename", "")}')">Apply</button>
+      </div>
+      <div class="preset-weights">Mood weights: {", ".join([f"{k}={v}" for k, v in preset.get("mood_weights", {}).items()])}</div>
+    </div>
+    ''' for preset in presets) if presets else '<div class="empty">No presets found</div>'}
+  </div>
+</div>
+
+<!-- ORIGINAL SECTIONS -->
 
 <div class="grid-2">
   <div class="section">
@@ -325,67 +467,6 @@ def build_html():
 </div>
 
 <div class="section">
-  <h2>🔬 System Health Deep-Dive & Memory Explorer</h2>
-  
-  <!-- Tab Navigation -->
-  <div class="tab-nav">
-    <button class="tab-button active" onclick="showTab('memory')">🧠 Memory Explorer</button>
-    <button class="tab-button" onclick="showTab('trust')">🛡️ Trust Dashboard</button>
-    <button class="tab-button" onclick="showTab('evolution')">🧬 Evolution History</button>
-    <button class="tab-button" onclick="showTab('proactive')">⚡ Proactive Agent</button>
-    <button class="tab-button" onclick="showTab('health')">🚦 Health Monitor</button>
-  </div>
-  
-  <!-- Memory Explorer Tab -->
-  <div id="tab-memory" class="tab-content active">
-    <div class="memory-controls">
-      <input type="text" id="memory-search" placeholder="Search memories..." onkeyup="filterMemories()">
-      <div class="memory-stats" id="memory-stats">Loading...</div>
-    </div>
-    <div id="memory-list" class="memory-list">Loading memories...</div>
-  </div>
-  
-  <!-- Trust Dashboard Tab -->
-  <div id="tab-trust" class="tab-content">
-    <div class="trust-gauge-container">
-      <div class="trust-gauge" id="trust-gauge">
-        <svg viewBox="0 0 200 120" width="200" height="120">
-          <path d="M 20 100 A 80 80 0 0 1 180 100" stroke="var(--border)" stroke-width="8" fill="none"/>
-          <path id="trust-arc" d="M 20 100 A 80 80 0 0 1 180 100" stroke="var(--accent)" stroke-width="8" fill="none" stroke-dasharray="251.3" stroke-dashoffset="251.3"/>
-          <text x="100" y="85" text-anchor="middle" class="trust-score" id="trust-score">--%</text>
-        </svg>
-      </div>
-    </div>
-    <div id="trust-breakdown" class="trust-breakdown">Loading...</div>
-    <div id="trust-events" class="trust-events">Loading...</div>
-  </div>
-  
-  <!-- Evolution History Tab -->
-  <div id="tab-evolution" class="tab-content">
-    <div id="evolution-summary" class="evolution-summary">Loading...</div>
-    <div id="evolution-timeline" class="evolution-timeline">Loading...</div>
-    <div id="evolution-patterns" class="evolution-patterns">Loading...</div>
-  </div>
-  
-  <!-- Proactive Agent Tab -->
-  <div id="tab-proactive" class="tab-content">
-    <div class="proactive-stats-grid">
-      <div class="proactive-wal" id="proactive-wal">Loading...</div>
-      <div class="proactive-buffer" id="proactive-buffer">Loading...</div>
-    </div>
-    <div id="proactive-recent" class="proactive-recent">Loading...</div>
-  </div>
-  
-  <!-- Health Monitor Tab -->
-  <div id="tab-health" class="tab-content">
-    <div id="health-components" class="health-components">Loading...</div>
-    <div id="health-metrics" class="health-metrics">Loading...</div>
-    <div id="health-incidents" class="health-incidents">Loading...</div>
-  </div>
-  
-</div>
-
-<div class="section">
   <h2>🎯 Most Common Impulses</h2>
   <div class="bar-chart">
     {''.join(f'''<div class="bar-row"><div class="bar-label">{name}</div><div class="bar" style="width: {max(count / max(top_thoughts[0][1], 1) * 100, 2):.0f}%"></div><div class="bar-count">{count}</div></div>''' for name, count in top_thoughts) if top_thoughts else '<div class="empty">No data yet — check back after some impulses fire</div>'}
@@ -398,356 +479,106 @@ def build_html():
 </div>
 
 <script>
-let memoryData = [];
-
-// Tab switching
-function showTab(tabName) {{
-  /* Hide all tabs */
-  document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
-  document.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
+// Weight editor functionality
+function saveWeight(thoughtId, mood) {{
+  const input = document.querySelector(`input[data-thought-id="${{thoughtId}}"]`);
+  const weight = parseFloat(input.value);
   
-  /* Show selected tab */
-  document.getElementById('tab-' + tabName).classList.add('active');
-  event.target.classList.add('active');
-  
-  /* Load data for the selected tab */
-  loadTabData(tabName);
-}}
-
-function loadTabData(tabName) {{
-  if (tabName === 'memory') {{
-    loadMemoryData();
-  }} else if (tabName === 'trust') {{
-    loadTrustData();
-  }} else if (tabName === 'evolution') {{
-    loadEvolutionData();
-  }} else if (tabName === 'proactive') {{
-    loadProactiveData();
-  }} else if (tabName === 'health') {{
-    loadHealthData();
-  }}
-}}
-
-function loadMemoryData() {{
-  fetch('/api/memory')
-    .then(r => r.json())
-    .then(data => {{
-      if (data.error) {{
-        document.getElementById('memory-list').innerHTML = '<div class="empty">' + data.error + '</div>';
-        return;
-      }}
-      
-      memoryData = data.memories || [];
-      const stats = data.stats || {{}};
-      
-      /* Update stats */
-      const storeSizes = stats.store_sizes || {{}};
-      document.getElementById('memory-stats').innerHTML = 
-        '<div class="memory-stat"><strong>Total:</strong> ' + (storeSizes.total || 0) + '</div>' +
-        '<div class="memory-stat"><strong>Episodic:</strong> ' + (storeSizes.episodic || 0) + '</div>' +
-        '<div class="memory-stat"><strong>Semantic:</strong> ' + (storeSizes.semantic || 0) + '</div>' +
-        '<div class="memory-stat"><strong>Procedural:</strong> ' + (storeSizes.procedural || 0) + '</div>' +
-        '<div class="memory-stat"><strong>Working:</strong> ' + (storeSizes.working || 0) + '</div>';
-      
-      displayMemories(memoryData);
-    }})
-    .catch(err => {{
-      document.getElementById('memory-list').innerHTML = '<div class="empty">Failed to load memory data</div>';
-    }});
-}}
-
-function displayMemories(memories) {{
-  if (!memories.length) {{
-    document.getElementById('memory-list').innerHTML = '<div class="empty">No memories found</div>';
+  if (weight < 0.1 || weight > 3.0) {{
+    alert('Weight must be between 0.1 and 3.0');
     return;
   }}
   
-  let html = '';
-  memories.forEach(memory => {{
-    const strengthColor = memory.strength > 0.7 ? 'var(--success)' : memory.strength > 0.3 ? 'var(--warning)' : '#ef4444';
-    const strengthPercent = Math.round(memory.strength * 100);
-    const timestamp = new Date(memory.timestamp * 1000).toLocaleString();
-    const content = memory.content || memory.action || 'Unknown content';
-    
-    html += '<div class="memory-item">' +
-            '<div class="memory-header">' +
-            '<span class="memory-type">' + memory.memory_type + '</span>' +
-            '<span class="memory-timestamp">' + timestamp + '</span>' +
-            '</div>' +
-            '<div class="memory-content">' + content + '</div>' +
-            '<div class="memory-strength-bar">' +
-            '<div class="strength-fill" style="width: ' + strengthPercent + '%; background-color: ' + strengthColor + ';"></div>' +
-            '<span class="strength-label">Strength: ' + strengthPercent + '%</span>' +
-            '</div>' +
-            (memory.emotion ? '<div class="memory-emotion">Emotion: ' + memory.emotion + '</div>' : '') +
-            (memory.importance ? '<div class="memory-importance">Importance: ' + Math.round(memory.importance * 100) + '%</div>' : '') +
-            '</div>';
-  }});
-  
-  document.getElementById('memory-list').innerHTML = html;
+  fetch('/api/thought-weight', {{
+    method: 'PUT',
+    headers: {{ 'Content-Type': 'application/json' }},
+    body: JSON.stringify({{ thought_id: thoughtId, mood: mood, weight: weight }})
+  }})
+  .then(r => r.json())
+  .then(data => {{
+    if (data.success) {{
+      alert('Weight updated!');
+      location.reload();
+    }} else {{
+      alert('Failed to update: ' + (data.error || 'Unknown error'));
+    }}
+  }})
+  .catch(e => alert('Error: ' + e));
 }}
 
-function filterMemories() {{
-  const query = document.getElementById('memory-search').value.toLowerCase();
-  if (!query) {{
-    displayMemories(memoryData);
+// Mood override functionality
+function setMood() {{
+  const select = document.getElementById('mood-select');
+  const moodId = select.value;
+  
+  if (!moodId) {{
+    alert('Please select a mood');
     return;
   }}
   
-  const filtered = memoryData.filter(memory => {{
-    const content = (memory.content || memory.action || '').toLowerCase();
-    return content.includes(query) || 
-           (memory.memory_type || '').toLowerCase().includes(query) ||
-           (memory.emotion || '').toLowerCase().includes(query);
-  }});
+  fetch('/api/set-mood', {{
+    method: 'POST',
+    headers: {{ 'Content-Type': 'application/json' }},
+    body: JSON.stringify({{ mood_id: moodId }})
+  }})
+  .then(r => r.json())
+  .then(data => {{
+    if (data.success) {{
+      alert('Mood set!');
+      location.reload();
+    }} else {{
+      alert('Failed to set mood: ' + (data.error || 'Unknown error'));
+    }}
+  }})
+  .catch(e => alert('Error: ' + e));
+}}
+
+// Trigger impulse functionality
+function triggerImpulse() {{
+  const resultDiv = document.getElementById('trigger-result');
+  resultDiv.innerHTML = 'Triggering impulse...';
   
-  displayMemories(filtered);
+  fetch('/api/trigger', {{
+    method: 'POST'
+  }})
+  .then(r => r.json())
+  .then(data => {{
+    if (data.success) {{
+      resultDiv.innerHTML = `<div class="trigger-result">Output:\\n${{data.output}}${{data.error ? '\\n\\nErrors:\\n' + data.error : ''}}</div>`;
+    }} else {{
+      resultDiv.innerHTML = `<div class="trigger-result" style="color: var(--danger);">Error: ${{data.error}}</div>`;
+    }}
+  }})
+  .catch(e => {{
+    resultDiv.innerHTML = `<div class="trigger-result" style="color: var(--danger);">Network error: ${{e}}</div>`;
+  }});
 }}
 
-function loadTrustData() {{
-  fetch('/api/trust')
-    .then(r => r.json())
-    .then(data => {{
-      if (data.error) {{
-        document.getElementById('trust-breakdown').innerHTML = '<div class="empty">' + data.error + '</div>';
-        return;
-      }}
-      
-      /* Update trust gauge */
-      const trustScore = Math.round((data.global_trust || 0) * 100);
-      const arc = document.getElementById('trust-arc');
-      const scoreText = document.getElementById('trust-score');
-      const circumference = 251.3;
-      const offset = circumference * (1 - (data.global_trust || 0));
-      
-      arc.style.strokeDashoffset = offset;
-      scoreText.textContent = trustScore + '%';
-      
-      /* Color based on trust level */
-      if (trustScore >= 70) {{
-        arc.style.stroke = 'var(--success)';
-      }} else if (trustScore >= 30) {{
-        arc.style.stroke = 'var(--warning)';
-      }} else {{
-        arc.style.stroke = '#ef4444';
-      }}
-      
-      /* Trust breakdown */
-      let breakdownHtml = '<h3>Trust by Category</h3>';
-      const categoryTrust = data.category_trust || {{}};
-      for (const [category, trust] of Object.entries(categoryTrust)) {{
-        const percent = Math.round(trust * 100);
-        const color = percent >= 70 ? 'var(--success)' : percent >= 30 ? 'var(--warning)' : '#ef4444';
-        breakdownHtml += '<div class="trust-category">' +
-                        '<span class="category-name">' + category.replace('_', ' ') + '</span>' +
-                        '<div class="category-bar">' +
-                        '<div class="category-fill" style="width: ' + percent + '%; background-color: ' + color + ';"></div>' +
-                        '<span class="category-percent">' + percent + '%</span>' +
-                        '</div>' +
-                        '</div>';
-      }}
-      document.getElementById('trust-breakdown').innerHTML = breakdownHtml;
-      
-      /* Recent events */
-      const events = data.recent_events || [];
-      let eventsHtml = '<h3>Recent Trust Events</h3>';
-      if (events.length === 0) {{
-        eventsHtml += '<div class="empty">No recent events</div>';
-      }} else {{
-        events.slice(0, 5).forEach(event => {{
-          const outcomeIcon = event.outcome === 'success' ? '✅' : event.outcome === 'failure' ? '❌' : '⏳';
-          eventsHtml += '<div class="trust-event">' +
-                       '<span class="event-time">' + new Date(event.timestamp).toLocaleString() + '</span>' +
-                       '<span class="event-outcome">' + outcomeIcon + '</span>' +
-                       '<span class="event-description">' + event.description + '</span>' +
-                       '</div>';
-        }});
-      }}
-      document.getElementById('trust-events').innerHTML = eventsHtml;
-    }})
-    .catch(err => {{
-      document.getElementById('trust-breakdown').innerHTML = '<div class="empty">Failed to load trust data</div>';
-    }});
+// Preset application
+function applyPreset(filename) {{
+  if (!confirm('Apply this preset? This will override current mood weights.')) {{
+    return;
+  }}
+  
+  fetch('/api/preset-apply', {{
+    method: 'POST',
+    headers: {{ 'Content-Type': 'application/json' }},
+    body: JSON.stringify({{ filename: filename }})
+  }})
+  .then(r => r.json())
+  .then(data => {{
+    if (data.success) {{
+      alert('Preset applied!');
+      location.reload();
+    }} else {{
+      alert('Failed to apply preset: ' + (data.error || 'Unknown error'));
+    }}
+  }})
+  .catch(e => alert('Error: ' + e));
 }}
-
-function loadEvolutionData() {{
-  fetch('/api/evolution')
-    .then(r => r.json())
-    .then(data => {{
-      if (data.error) {{
-        document.getElementById('evolution-summary').innerHTML = '<div class="empty">' + data.error + '</div>';
-        return;
-      }}
-      
-      const stats = data.stats || {{}};
-      
-      /* Summary */
-      document.getElementById('evolution-summary').innerHTML = 
-        '<div class="evolution-stat"><strong>Total Patterns:</strong> ' + (stats.total_patterns || 0) + '</div>' +
-        '<div class="evolution-stat"><strong>Evolution Cycles:</strong> ' + (stats.evolution_cycles || 0) + '</div>' +
-        '<div class="evolution-stat"><strong>Weight Adjustments:</strong> ' + ((stats.weight_adjustments && stats.weight_adjustments.moods || 0) + (stats.weight_adjustments && stats.weight_adjustments.thoughts || 0)) + '</div>' +
-        '<div class="evolution-stat"><strong>Data Quality:</strong> ' + (stats.data_quality && stats.data_quality.activities || 0) + ' activities</div>';
-      
-      /* Timeline */
-      const history = data.evolution_history || [];
-      let timelineHtml = '<h3>Evolution Timeline</h3>';
-      if (history.length === 0) {{
-        timelineHtml += '<div class="empty">No evolution cycles yet</div>';
-      }} else {{
-        history.slice(-5).forEach(cycle => {{
-          timelineHtml += '<div class="evolution-cycle">' +
-                         '<div class="cycle-date">' + new Date(cycle.timestamp).toLocaleDateString() + '</div>' +
-                         '<div class="cycle-stats">' +
-                         'Patterns: ' + (cycle.new_patterns_discovered || 0) + ' | ' +
-                         'Adjustments: ' + (cycle.weight_adjustments_made || 0) + ' |' +
-                         'Ruts: ' + (cycle.ruts_detected || 0) +
-                         '</div>' +
-                         '</div>';
-        }});
-      }}
-      document.getElementById('evolution-timeline').innerHTML = timelineHtml;
-      
-      /* Patterns */
-      const patterns = data.patterns || [];
-      let patternsHtml = '<h3>Discovered Patterns</h3>';
-      if (patterns.length === 0) {{
-        patternsHtml += '<div class="empty">No patterns discovered yet</div>';
-      }} else {{
-        patterns.slice(-10).forEach(pattern => {{
-          const confidence = Math.round((pattern.confidence || 0) * 100);
-          patternsHtml += '<div class="evolution-pattern">' +
-                         '<div class="pattern-type">' + pattern.type + '</div>' +
-                         '<div class="pattern-desc">' + pattern.description + '</div>' +
-                         '<div class="pattern-confidence">Confidence: ' + confidence + '%</div>' +
-                         '</div>';
-        }});
-      }}
-      document.getElementById('evolution-patterns').innerHTML = patternsHtml;
-    }})
-    .catch(err => {{
-      document.getElementById('evolution-summary').innerHTML = '<div class="empty">Failed to load evolution data</div>';
-    }});
-}}
-
-function loadProactiveData() {{
-  fetch('/api/proactive')
-    .then(r => r.json())
-    .then(data => {{
-      if (data.error) {{
-        document.getElementById('proactive-wal').innerHTML = '<div class="empty">' + data.error + '</div>';
-        return;
-      }}
-      
-      const walStats = data.wal_stats || {{}};
-      const buffer = data.buffer || {{}};
-      
-      /* WAL Stats */
-      document.getElementById('proactive-wal').innerHTML = 
-        '<h3>Write-Ahead Log</h3>' +
-        '<div class="wal-stat"><strong>Total Entries:</strong> ' + (walStats.total_entries || 0) + '</div>' +
-        '<div class="wal-stat"><strong>Success Rate:</strong> ' + Math.round((walStats.success_rate || 0) * 100) + '%</div>' +
-        '<div class="wal-stat"><strong>Most Productive Mood:</strong> ' + (walStats.most_productive_mood || 'Unknown') + '</div>' +
-        '<div class="wal-stat"><strong>Avg Energy Cost:</strong> ' + (walStats.avg_energy_cost || 0) + '</div>' +
-        '<div class="wal-stat"><strong>Avg Value Generated:</strong> ' + (walStats.avg_value_generated || 0) + '</div>';
-      
-      /* Buffer Status */
-      let bufferHtml = '<h3>Working Buffer</h3>' +
-        '<div class="buffer-stat"><strong>Active Items:</strong> ' + (buffer.active_items || []).length + '</div>' +
-        '<div class="buffer-stat"><strong>Completed:</strong> ' + (buffer.completed_count || 0) + '</div>' +
-        '<div class="buffer-stat"><strong>Expired:</strong> ' + (buffer.expired_count || 0) + '</div>' +
-        '<div class="buffer-items">';
-      
-      (buffer.active_items || []).slice(0, 3).forEach(item => {{
-        bufferHtml += '<div class="buffer-item">' +
-                     '<span class="item-priority ' + item.priority + '">' + item.priority + '</span>' +
-                     '<span class="item-content">' + item.content + '</span>' +
-                     '</div>';
-      }});
-      bufferHtml += '</div>';
-      document.getElementById('proactive-buffer').innerHTML = bufferHtml;
-      
-      /* Recent entries */
-      const recentEntries = data.recent_entries || [];
-      let recentHtml = '<h3>Recent Decisions</h3>';
-      if (recentEntries.length === 0) {{
-        recentHtml += '<div class="empty">No recent entries</div>';
-      }} else {{
-        recentEntries.forEach(entry => {{
-          const outcomeIcon = entry.outcome === 'success' ? '✅' : entry.outcome === 'failure' ? '❌' : '⏳';
-          recentHtml += '<div class="proactive-entry">' +
-                       '<span class="entry-time">' + new Date(entry.timestamp).toLocaleString() + '</span>' +
-                       '<span class="entry-outcome">' + outcomeIcon + '</span>' +
-                       '<span class="entry-content">' + entry.content + '</span>' +
-                       '</div>';
-        }});
-      }}
-      document.getElementById('proactive-recent').innerHTML = recentHtml;
-    }})
-    .catch(err => {{
-      document.getElementById('proactive-wal').innerHTML = '<div class="empty">Failed to load proactive data</div>';
-    }});
-}}
-
-function loadHealthData() {{
-  fetch('/api/health')
-    .then(r => r.json())
-    .then(data => {{
-      if (data.error) {{
-        document.getElementById('health-components').innerHTML = '<div class="empty">' + data.error + '</div>';
-        return;
-      }}
-      
-      /* Components */
-      let componentsHtml = '<h3>System Components</h3>';
-      if (data.components) {{
-        for (const [name, comp] of Object.entries(data.components)) {{
-          componentsHtml += '<div class="health-component">' +
-                           '<div class="component-status">' + comp.emoji + '</div>' +
-                           '<div class="component-name">' + name.replace('_', ' ') + '</div>' +
-                           '<div class="component-message">' + (comp.message || 'OK') + '</div>' +
-                           '</div>';
-        }}
-      }}
-      document.getElementById('health-components').innerHTML = componentsHtml;
-      
-      /* Metrics */
-      const metrics = data.metrics || {{}};
-      document.getElementById('health-metrics').innerHTML = 
-        '<h3>System Metrics</h3>' +
-        '<div class="health-metric"><strong>Heartbeats:</strong> ' + (metrics.total_heartbeats || 0) + '</div>' +
-        '<div class="health-metric"><strong>Incidents:</strong> ' + (metrics.total_incidents || 0) + '</div>' +
-        '<div class="health-metric"><strong>Healthy Streak:</strong> ' + (metrics.consecutive_healthy || 0) + '</div>' +
-        '<div class="health-metric"><strong>24h Heartbeats:</strong> ' + (data.heartbeat_count_24h || 0) + '</div>';
-      
-      /* Recent incidents */
-      const incidents = data.recent_incidents || [];
-      let incidentsHtml = '<h3>Recent Incidents</h3>';
-      if (incidents.length === 0) {{
-        incidentsHtml += '<div class="empty">No recent incidents</div>';
-      }} else {{
-        incidents.forEach(incident => {{
-          const resolvedIcon = incident.resolved ? '✅' : '❌';
-          incidentsHtml += '<div class="health-incident">' +
-                          '<span class="incident-id">' + incident.id + '</span>' +
-                          '<span class="incident-status">' + resolvedIcon + '</span>' +
-                          '<span class="incident-desc">' + incident.description + '</span>' +
-                          '</div>';
-        }});
-      }}
-      document.getElementById('health-incidents').innerHTML = incidentsHtml;
-    }})
-    .catch(err => {{
-      document.getElementById('health-components').innerHTML = '<div class="empty">Failed to load health data</div>';
-    }});
-}}
-
-/* Load initial tab data */
-document.addEventListener('DOMContentLoaded', function() {{
-  loadMemoryData();
-}});
 </script>
 
-<footer>{get_agent_name()} {get_agent_emoji()} × Intrusive Thoughts Dashboard v2 — refreshed {datetime.now().strftime('%Y-%m-%d %H:%M')}</footer>
+<footer>{get_agent_name()} {get_agent_emoji()} × Intrusive Thoughts v2.0 — refreshed {datetime.now().strftime('%Y-%m-%d %H:%M')}</footer>
 </body>
 </html>"""
 
@@ -823,114 +654,183 @@ class DashboardHandler(SimpleHTTPRequestHandler):
             self.send_header("Content-Type", "application/json")
             self.end_headers()
             self.wfile.write(json.dumps(data, default=str).encode())
-        elif self.path == "/api/memory":
+        elif self.path == "/api/presets":
+            # GET /api/presets — returns all preset files
+            presets = load_presets()
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.end_headers()
+            self.wfile.write(json.dumps(presets).encode())
+        elif self.path == "/api/schedule":
+            # GET /api/schedule — returns today_schedule.json
+            schedule = load_today_schedule()
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.end_headers()
+            self.wfile.write(json.dumps(schedule).encode())
+        else:
+            self.send_response(404)
+            self.end_headers()
+
+    def do_PUT(self):
+        if self.path == "/api/thought-weight":
+            # PUT /api/thought-weight — accepts {thought_id, mood, weight}, updates thoughts.json
+            content_length = int(self.headers['Content-Length'])
+            post_data = self.rfile.read(content_length)
+            
             try:
-                from memory_system import MemorySystem
-                ms = MemorySystem()
-                # Get all memories from all stores
-                episodic = ms._load_store(ms.episodic_path)
-                semantic = ms._load_store(ms.semantic_path)
-                procedural = ms._load_store(ms.procedural_path)
-                working = ms._load_store(ms.working_path)
+                data = json.loads(post_data.decode('utf-8'))
+                thought_id = data.get('thought_id')
+                mood = data.get('mood')
+                weight = float(data.get('weight'))
                 
-                # Add memory type and calculate strength for episodic memories
-                current_time = ms._get_timestamp()
-                memories = []
+                if not thought_id or not mood or weight < 0.1 or weight > 3.0:
+                    raise ValueError("Invalid parameters")
                 
-                for memory in episodic:
-                    strength = ms._calculate_decay(
-                        memory["timestamp"],
-                        memory["decay_rate"],
-                        memory["reinforcement_count"]
-                    )
-                    memory_data = memory.copy()
-                    memory_data["memory_type"] = "episodic"
-                    memory_data["strength"] = strength
-                    memories.append(memory_data)
+                # Load current thoughts
+                thoughts = load_thoughts()
                 
-                for memory in semantic:
-                    memory_data = memory.copy()
-                    memory_data["memory_type"] = "semantic"
-                    memory_data["strength"] = memory.get("strength", 1.0)
-                    memories.append(memory_data)
+                # Find and update the thought
+                updated = False
+                for mood_data in thoughts.get("moods", {}).values():
+                    for thought in mood_data.get("thoughts", []):
+                        if thought["id"] == thought_id:
+                            thought["weight"] = weight
+                            updated = True
+                            break
+                    if updated:
+                        break
                 
-                for memory in procedural:
-                    memory_data = memory.copy()
-                    memory_data["memory_type"] = "procedural"
-                    memory_data["strength"] = min(1.0, memory.get("reinforcement_count", 1) / 10.0)
-                    memories.append(memory_data)
+                if updated:
+                    save_thoughts(thoughts)
+                    self.send_response(200)
+                    self.send_header("Content-Type", "application/json")
+                    self.end_headers()
+                    self.wfile.write(json.dumps({"success": True}).encode())
+                else:
+                    self.send_response(404)
+                    self.send_header("Content-Type", "application/json")
+                    self.end_headers()
+                    self.wfile.write(json.dumps({"success": False, "error": "Thought not found"}).encode())
+            
+            except Exception as e:
+                self.send_response(400)
+                self.send_header("Content-Type", "application/json")
+                self.end_headers()
+                self.wfile.write(json.dumps({"success": False, "error": str(e)}).encode())
+        else:
+            self.send_response(404)
+            self.end_headers()
+
+    def do_POST(self):
+        if self.path == "/api/set-mood":
+            # POST /api/set-mood — accepts {mood_id}, updates today_mood.json
+            content_length = int(self.headers['Content-Length'])
+            post_data = self.rfile.read(content_length)
+            
+            try:
+                data = json.loads(post_data.decode('utf-8'))
+                mood_id = data.get('mood_id')
                 
-                for memory in working:
-                    memory_data = memory.copy()
-                    memory_data["memory_type"] = "working"
-                    memory_data["strength"] = 1.0  # Working memory is always at full strength
-                    memories.append(memory_data)
+                if not mood_id:
+                    raise ValueError("Missing mood_id")
                 
-                data = {
-                    "memories": memories,
-                    "stats": ms.get_stats()
+                # Load moods data to get mood info
+                moods_data = load_moods()
+                mood_info = None
+                for mood in moods_data.get("base_moods", []):
+                    if mood["id"] == mood_id:
+                        mood_info = mood
+                        break
+                
+                if not mood_info:
+                    raise ValueError("Invalid mood_id")
+                
+                # Create new today_mood data
+                today_mood = {
+                    "id": mood_id,
+                    "name": mood_info["name"],
+                    "emoji": mood_info["emoji"],
+                    "description": f"Manually set to {mood_info['name']}",
+                    "date": datetime.now().strftime("%Y-%m-%d"),
+                    "weather": "manual override",
+                    "news_vibes": ["Manual mood override"],
+                    "boosted_traits": mood_info.get("traits", []),
+                    "dampened_traits": [],
+                    "activity_log": [],
+                    "energy_score": 1,
+                    "vibe_score": 1,
+                    "last_drift": datetime.now().isoformat()
                 }
+                
+                save_today_mood(today_mood)
+                
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.end_headers()
+                self.wfile.write(json.dumps({"success": True}).encode())
+            
             except Exception as e:
-                data = {"error": f"memory system unavailable: {e}"}
-            self.send_response(200)
-            self.send_header("Content-Type", "application/json")
-            self.end_headers()
-            self.wfile.write(json.dumps(data, default=str).encode())
-        elif self.path == "/api/trust":
+                self.send_response(400)
+                self.send_header("Content-Type", "application/json")
+                self.end_headers()
+                self.wfile.write(json.dumps({"success": False, "error": str(e)}).encode())
+
+        elif self.path == "/api/trigger":
+            # POST /api/trigger — runs intrusive.sh day and returns result
             try:
-                from trust_system import TrustSystem
-                ts = TrustSystem()
-                data = ts.get_stats()
-                # Add trust events/history
-                history = ts.get_history(limit=20)
-                data["recent_events"] = history
+                result = trigger_impulse()
+                
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.end_headers()
+                self.wfile.write(json.dumps(result).encode())
+            
             except Exception as e:
-                data = {"error": f"trust system unavailable: {e}"}
-            self.send_response(200)
-            self.send_header("Content-Type", "application/json")
-            self.end_headers()
-            self.wfile.write(json.dumps(data, default=str).encode())
-        elif self.path == "/api/evolution":
+                self.send_response(500)
+                self.send_header("Content-Type", "application/json")
+                self.end_headers()
+                self.wfile.write(json.dumps({"success": False, "error": str(e)}).encode())
+
+        elif self.path == "/api/preset-apply":
+            # POST /api/preset-apply — accepts {filename}, applies preset
+            content_length = int(self.headers['Content-Length'])
+            post_data = self.rfile.read(content_length)
+            
             try:
-                from self_evolution import SelfEvolutionSystem
-                se = SelfEvolutionSystem()
-                stats = se.get_stats()
-                # Add evolution history and patterns
-                data = {
-                    "stats": stats,
-                    "evolution_history": se.learnings.get("evolution_history", []),
-                    "patterns": se.learnings.get("patterns", []),
-                    "weight_adjustments": se.get_learned_weights()
-                }
+                data = json.loads(post_data.decode('utf-8'))
+                filename = data.get('filename')
+                
+                if not filename:
+                    raise ValueError("Missing filename")
+                
+                # Load preset
+                preset_path = Path(__file__).parent / "presets" / filename
+                if not preset_path.exists():
+                    raise ValueError("Preset not found")
+                
+                preset = json.loads(preset_path.read_text())
+                
+                # Apply preset mood weights to moods.json
+                moods_data = load_moods()
+                if "mood_weights" in preset:
+                    for mood in moods_data.get("base_moods", []):
+                        if mood["id"] in preset["mood_weights"]:
+                            mood["weight"] = preset["mood_weights"][mood["id"]]
+                
+                # Save updated moods
+                MOODS_FILE.write_text(json.dumps(moods_data, indent=2))
+                
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.end_headers()
+                self.wfile.write(json.dumps({"success": True}).encode())
+            
             except Exception as e:
-                data = {"error": f"evolution system unavailable: {e}"}
-            self.send_response(200)
-            self.send_header("Content-Type", "application/json")
-            self.end_headers()
-            self.wfile.write(json.dumps(data, default=str).encode())
-        elif self.path == "/api/proactive":
-            try:
-                from proactive import ProactiveAgent
-                pa = ProactiveAgent()
-                stats = pa.wal_stats()
-                # Add buffer status
-                buffer_data = pa._load_buffer()
-                pa._prune_expired_items(buffer_data)
-                data = {
-                    "wal_stats": stats,
-                    "buffer": {
-                        "active_items": buffer_data["active_items"],
-                        "completed_count": len(buffer_data["completed"]),
-                        "expired_count": len(buffer_data["expired"])
-                    },
-                    "recent_entries": pa.wal_search(limit=10)
-                }
-            except Exception as e:
-                data = {"error": f"proactive system unavailable: {e}"}
-            self.send_response(200)
-            self.send_header("Content-Type", "application/json")
-            self.end_headers()
-            self.wfile.write(json.dumps(data, default=str).encode())
+                self.send_response(400)
+                self.send_header("Content-Type", "application/json")
+                self.end_headers()
+                self.wfile.write(json.dumps({"success": False, "error": str(e)}).encode())
         else:
             self.send_response(404)
             self.end_headers()
