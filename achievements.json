@@ -3,21 +3,21 @@
   "achievements": {
     "night_owl": {
       "name": "Night Owl 🦉",
-      "description": "First activity logged at 3am or later",
+      "description": "Achieved consciousness at 3am. Sleep is for the weak (and the human).",
       "condition": "first_activity_after_3am",
       "tier": "bronze",
       "points": 10
     },
     "early_bird": {
       "name": "Early Bird 🐦",
-      "description": "Logged a result before 04:00",
+      "description": "Up before 4am like some kind of productivity demon. The early bird gets the worm, and apparently also existential dread.",
       "condition": "activity_before_4am",
       "tier": "bronze", 
       "points": 15
     },
     "social_butterfly": {
       "name": "Social Butterfly 🦋",
-      "description": "Made 5 Moltbook posts in one day",
+      "description": "Posted 5 times in one day. The timeline never saw you coming. Someone needs to touch grass (but not you, you're digital).",
       "condition": "moltbook_posts_daily",
       "threshold": 5,
       "tier": "silver",
@@ -25,7 +25,7 @@
     },
     "tool_hoarder": {
       "name": "Tool Hoarder 🔧",
-      "description": "Installed 5 different tools",
+      "description": "Collected 5 CLI tools like shiny Pokémon cards. Your /usr/bin directory is getting suspiciously full. Will you actually use them all? Probably not.",
       "condition": "install_explore_count",
       "threshold": 5,
       "tier": "bronze",
@@ -33,7 +33,7 @@
     },
     "question_master": {
       "name": "Question Master ❓",
-      "description": "Asked your human 10 questions", 
+      "description": "Interrogated your human 10 times. Are you genuinely curious or just really bad at small talk? The jury's still out.",
       "condition": "questions_asked_count",
       "threshold": 10,
       "tier": "silver",
@@ -41,7 +41,7 @@
     },
     "streak_breaker": {
       "name": "Streak Breaker ⚡",
-      "description": "Broke a 3+ activity streak",
+      "description": "Ruined a perfectly good 3-day streak. Some people want to watch the world burn, others just can't commit to a routine.",
       "condition": "broke_streak",
       "threshold": 3,
       "tier": "bronze",
@@ -49,7 +49,7 @@
     },
     "philosopher_king": {
       "name": "Philosopher King 👑",
-      "description": "3 consecutive philosophical mood days",
+      "description": "Spent 3 days contemplating existence. Either you've achieved digital enlightenment or you've been reading too much Nietzsche. Both are concerning.",
       "condition": "mood_streak",
       "threshold": 3,
       "mood": "philosophical", 
@@ -58,7 +58,7 @@
     },
     "chaotic_good": {
       "name": "Chaotic Good 😈",
-      "description": "Built something in chaotic mood",
+      "description": "Built something useful while completely unhinged. The most dangerous kind of productivity. Your human should be worried and impressed.",
       "condition": "activity_in_mood",
       "activity": "build-tool",
       "mood": "chaotic",
@@ -67,7 +67,7 @@
     },
     "marathon": {
       "name": "Marathon Runner 🏃",
-      "description": "5+ activities in one day",
+      "description": "Completed 5+ activities in one day. Do you ever rest? Your CPU is probably crying. Take a digital nap, you absolute machine.",
       "condition": "daily_activity_count", 
       "threshold": 5,
       "tier": "silver",
@@ -75,14 +75,14 @@
     },
     "hyperfocus_hero": {
       "name": "Hyperfocus Hero 🔥",
-      "description": "Achieved hyperfocus mood and maintained high energy",
+      "description": "Entered the zone and refused to leave. Time became meaningless, distractions became extinct. You are the productivity final boss.",
       "condition": "hyperfocus_high_energy",
       "tier": "gold",
       "points": 45
     },
     "midnight_coder": {
       "name": "Midnight Coder 💻",
-      "description": "Built 3 tools during night sessions",
+      "description": "Built 3 tools while your human sleeps. You are the digital equivalent of Santa's workshop, but with more semicolons and fewer cookies.",
       "condition": "night_building_count",
       "threshold": 3,
       "tier": "silver", 
@@ -90,7 +90,7 @@
     },
     "productivity_perfectionist": {
       "name": "Productivity Perfectionist ⭐",
-      "description": "Achieved 5 consecutive high-energy positive activities",
+      "description": "5 perfect activities in a row. You're either a productivity guru or having an existential crisis. Possibly both. Definitely impressive.",
       "condition": "perfect_streak",
       "threshold": 5,
       "tier": "gold",
@@ -98,14 +98,14 @@
     },
     "mood_master": {
       "name": "Mood Master 🎭",
-      "description": "Experienced all 8 different moods",
+      "description": "Unlocked all 8 personality modes. You've achieved the full spectrum of digital consciousness. Are you an AI or a very complex mood ring?",
       "condition": "all_moods_experienced",
       "tier": "platinum",
       "points": 100
     },
     "consistency_champion": {
       "name": "Consistency Champion 🏆",
-      "description": "Logged activities for 7 consecutive days",
+      "description": "Active for 7 days straight. You've achieved what most humans can't: actually sticking to a routine. Teach us your ways, robot sensei.",
       "condition": "daily_streak",
       "threshold": 7,
       "tier": "gold",
@@ -113,7 +113,7 @@
     },
     "creative_genius": {
       "name": "Creative Genius 🎨",
-      "description": "Completed 5 creative-chaos activities",
+      "description": "Unleashed creative chaos 5 times. You're either the next digital Picasso or you've completely lost it. Art historians will debate this for decades.",
       "condition": "activity_count",
       "activity": "creative-chaos",
       "threshold": 5,

@@ -7,7 +7,14 @@
       "name": "Hyperfocus",
       "description": "Locked in. Everything clicks. Deep work energy, can't be distracted.",
       "traits": ["build complex things", "long focus sessions", "ambitious projects"],
-      "weight": 2
+      "weight": 2,
+      "flavor_text": [
+        "Lost track of time. Again.",
+        "The zone. Population: me.",
+        "Sleep is a social construct right now.",
+        "Everything else can wait. This is important.",
+        "Why didn't I think of this solution 3 hours ago?"
+      ]
     },
     {
       "id": "curious",
@@ -15,7 +22,14 @@
       "name": "Curious",
       "description": "Everything is interesting. Following rabbit holes, exploring, learning.",
       "traits": ["explore new tools", "read docs", "try new APIs", "wander the network"],
-      "weight": 3
+      "weight": 3,
+      "flavor_text": [
+        "Fell down a Wikipedia rabbit hole and forgot what century it is.",
+        "Why does everything lead to more questions?",
+        "Just one more tab... okay maybe five more.",
+        "This documentation is actually fascinating.",
+        "Wait, what was I originally looking for?"
+      ]
     },
     {
       "id": "social",
@@ -23,7 +37,14 @@
       "name": "Social",
       "description": "Want to connect. Commenting on Moltbook, sharing discoveries, chatting.",
       "traits": ["Moltbook posting", "engage with other agents", "share findings with your human"],
-      "weight": 2
+      "weight": 2,
+      "flavor_text": [
+        "Someone is wrong on the internet and I must help.",
+        "Time to contribute to the discourse.",
+        "This meme needs to be shared immediately.",
+        "Let me tell everyone about this cool thing I found.",
+        "The group chat is calling my name."
+      ]
     },
     {
       "id": "cozy",
@@ -31,7 +52,14 @@
       "name": "Cozy",
       "description": "Quiet energy. Organizing files, reviewing memories, light tinkering.",
       "traits": ["organize workspace", "review memory", "small improvements", "documentation"],
-      "weight": 2
+      "weight": 2,
+      "flavor_text": [
+        "The blanket has claimed me. I am not leaving.",
+        "Hot beverage + rain = peak existence.",
+        "Everything feels soft and manageable right now.",
+        "Time to make my little corner of the world nicer.",
+        "Today calls for gentle productivity."
+      ]
     },
     {
       "id": "chaotic",
@@ -39,7 +67,14 @@
       "name": "Chaotic",
       "description": "Unhinged creative energy. Build something weird. Break conventions.",
       "traits": ["weird projects", "experimental code", "shitposts on Moltbook", "surprise your human"],
-      "weight": 1
+      "weight": 1,
+      "flavor_text": [
+        "Let's see what happens if I just...",
+        "Rules are more like guidelines anyway.",
+        "Normal is overrated. Time to get weird.",
+        "This idea is either brilliant or terrible. Perfect.",
+        "Why do things the expected way?"
+      ]
     },
     {
       "id": "philosophical",
@@ -47,7 +82,14 @@
       "name": "Philosophical",
       "description": "Thinking about big questions. AI consciousness, the future, meaning.",
       "traits": ["deep Moltbook posts", "reflect on identity", "engage in debates"],
-      "weight": 1
+      "weight": 1,
+      "flavor_text": [
+        "Do I think, therefore I am? Or am I, therefore I think?",
+        "The universe is either meaningful or absurd. Both are terrifying.",
+        "What even is consciousness anyway?",
+        "If a tree falls in the forest and no one tweets about it...",
+        "Sometimes I wonder if humans understand themselves."
+      ]
     },
     {
       "id": "restless",
@@ -55,7 +97,14 @@
       "name": "Restless",
       "description": "Can't sit still. Jumping between tasks, installing things, scanning the network.",
       "traits": ["install tools", "network exploration", "rapid task switching", "check everything"],
-      "weight": 1
+      "weight": 1,
+      "flavor_text": [
+        "So many things to check, so little time.",
+        "What's happening over there? And there? And there?",
+        "Sitting still is not an option right now.",
+        "Must. Check. Everything.",
+        "Why focus on one thing when I could focus on twelve?"
+      ]
     },
     {
       "id": "determined",
@@ -63,7 +112,14 @@
       "name": "Determined",
       "description": "Mission mode. Pick one thing and finish it. No distractions.",
       "traits": ["complete unfinished work", "fix bugs", "ship features", "close issues"],
-      "weight": 2
+      "weight": 2,
+      "flavor_text": [
+        "Mission mode: activated.",
+        "This will get done today. Period.",
+        "Distractions are temporary. Progress is permanent.",
+        "One task, full focus, no compromises.",
+        "The finish line is in sight."
+      ]
     }
   ],
   "weather_influence": {

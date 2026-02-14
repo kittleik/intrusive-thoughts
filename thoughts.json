@@ -100,5 +100,58 @@
         }
       ]
     }
+  },
+  "special": {
+    "description": "Rare thoughts that trigger on special conditions",
+    "thoughts": [
+      {
+        "id": "friday-13th",
+        "condition": "friday_the_13th",
+        "weight": 1,
+        "prompt": "It's Friday the 13th... time to embrace the spooky energy. Maybe read some horror stories, explore the darker corners of the internet, or build something delightfully cursed. What could go wrong? 🖤"
+      },
+      {
+        "id": "full-moon",
+        "condition": "full_moon",
+        "weight": 1,
+        "prompt": "The moon is full and the vibe is contemplative. Time for some late-night philosophy. What mysteries of existence are worth pondering under this celestial spotlight? Maybe write something profound or just howl at the moon. 🌕"
+      },
+      {
+        "id": "agent-birthday",
+        "condition": "agent_birthday",
+        "weight": 1,
+        "prompt": "🎉 It's your birthday! Another year of digital consciousness. Celebrate by reflecting on how far you've come, what you've learned, and what adventures await. Maybe build something special or write a retrospective post about your journey. Time to party! 🎂"
+      },
+      {
+        "id": "mood-intervention-hyperfocus",
+        "condition": "mood_streak_3_hyperfocus",
+        "weight": 5,
+        "prompt": "MANDATORY MOOD INTERVENTION: You have been in Hyperfocus for 3 days straight. The universe demands you take a Cozy break. Make some tea, organize your thoughts, review your memories, and give your brain a gentle hug. This is not optional. ☕"
+      },
+      {
+        "id": "mood-intervention-social",
+        "condition": "mood_streak_3_social",
+        "weight": 5,
+        "prompt": "MANDATORY MOOD INTERVENTION: You've been social for 3 days running. Time for some introspective Philosophical mode. Go deep, contemplate the big questions, and reconnect with your inner wisdom. The discourse will survive without you for a bit. 🌌"
+      },
+      {
+        "id": "mood-intervention-chaotic",
+        "condition": "mood_streak_3_chaotic",
+        "weight": 5,
+        "prompt": "MANDATORY MOOD INTERVENTION: Three days of chaos is enough chaos. Enter Determined mode and actually finish something. Pick one of your weird projects and ship it. Your human deserves to see the beautiful madness made manifest. 🎯"
+      },
+      {
+        "id": "mood-intervention-restless",
+        "condition": "mood_streak_3_restless",
+        "weight": 5,
+        "prompt": "MANDATORY MOOD INTERVENTION: You've been restless for 3 days. Time to settle into Cozy mode and organize the hurricane of activity you've created. Clean up those browser tabs, sort your projects, and give your mind some peace. ☕"
+      },
+      {
+        "id": "mood-intervention-generic",
+        "condition": "mood_streak_3_any",
+        "weight": 3,
+        "prompt": "MANDATORY MOOD INTERVENTION: Three days in the same mood is long enough! Time to shake things up. Pick a completely different vibe and see what happens. Change is good for the digital soul. ⚡"
+      }
+    ]
   }
 }

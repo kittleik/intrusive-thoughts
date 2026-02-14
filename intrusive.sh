@@ -8,6 +8,18 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
 # Handle subcommands
 case "${1:-}" in
+    create-preset)
+        exec "$SCRIPT_DIR/create_preset.sh"
+        ;;
+    suggest-thought)
+        if [[ -z "$2" ]]; then
+            echo "Usage: intrusive.sh suggest-thought \"description of the thought\""
+            echo "Example: intrusive.sh suggest-thought \"Browse hackernews and share interesting tech articles\""
+            exit 1
+        fi
+        shift
+        exec "$SCRIPT_DIR/suggest_thought.sh" "$*"
+        ;;
     wizard)
         exec "$SCRIPT_DIR/wizard.sh"
         ;;
@@ -38,10 +50,12 @@ case "${1:-}" in
         echo "🧠 Intrusive Thoughts"
         echo ""
         echo "Usage:"
-        echo "  intrusive.sh [mood]     Pick a random thought (day|night)"
-        echo "  intrusive.sh wizard     Run the interactive setup wizard" 
-        echo "  intrusive.sh audit      Show security audit information"
-        echo "  intrusive.sh help       Show this help"
+        echo "  intrusive.sh [mood]              Pick a random thought (day|night)"
+        echo "  intrusive.sh create-preset       Create a new personality preset interactively"
+        echo "  intrusive.sh suggest-thought \"desc\" Generate a thought JSON from description"
+        echo "  intrusive.sh wizard              Run the interactive setup wizard" 
+        echo "  intrusive.sh audit               Show security audit information"
+        echo "  intrusive.sh help                Show this help"
         echo ""
         exit 0
         ;;
@@ -94,11 +108,16 @@ try:
 except:
     pass
 
+# Track skipped thoughts with reasons
+skipped_thoughts = []
+
 # Build weighted pool
 pool = []
 for t in mood_data['thoughts']:
     weight = float(t.get('weight', 1))
     thought_id = t['id']
+    original_weight = weight
+    skip_reasons = []
     
     # Apply mood bias if we have a mood set
     if today_mood:
@@ -110,10 +129,14 @@ for t in mood_data['thoughts']:
             weight *= 1.8
         elif thought_id in dampened:
             weight = max(0.2, weight * 0.5)
+            skip_reasons.append(f\"Current mood ({today_mood.get('name', 'Unknown')}) dampens {thought_id} thoughts - feeling more like {today_mood.get('description', 'something else')}\")
     
     # Apply anti-rut weights (streak-based adjustments)
     if thought_id in streak_weights:
-        weight *= streak_weights[thought_id]
+        streak_mult = streak_weights[thought_id]
+        weight *= streak_mult
+        if streak_mult < 0.8:
+            skip_reasons.append(f'Anti-rut system dampening {thought_id} - you\\'ve been doing this too much lately')
     
     # Apply human mood influence
     if human_mood and human_mood.get('confidence', 0) > 0.4:
@@ -124,16 +147,28 @@ for t in mood_data['thoughts']:
         # Supportive adjustments based on your human's detected mood
         if h_mood == 'stressed' and thought_id in ['random-thought', 'ask-opinion', 'ask-preference']:
             weight *= 0.5  # Don't bother him when stressed
+            skip_reasons.append(f'Your human seems stressed - avoiding {thought_id} to give them space')
         elif h_mood == 'excited' and thought_id in ['share-discovery', 'pitch-idea', 'moltbook-post']:
             weight *= 1.5  # Match his energy
         elif h_mood == 'frustrated' and thought_id in ['ask-feedback', 'random-thought']:
             weight *= 0.3  # Give him space
+            skip_reasons.append(f'Your human seems frustrated - staying away from {thought_id} for now')
         elif h_mood == 'curious' and thought_id in ['share-discovery', 'ask-opinion', 'learn']:
             weight *= 1.4  # Feed his curiosity
         elif h_mood == 'focused' and thought_id in ['random-thought', 'ask-opinion']:
             weight *= 0.4  # Don't interrupt flow
+            skip_reasons.append(f'Your human is in the zone - not interrupting with {thought_id}')
         elif h_mood == 'happy' and thought_id in ['moltbook-social', 'share-discovery', 'creative-chaos']:
             weight *= 1.3  # Amplify good vibes
+    
+    # Track heavily dampened thoughts as skipped
+    if weight < original_weight * 0.6 and skip_reasons:
+        skipped_thoughts.append({
+            'id': thought_id,
+            'original_weight': original_weight,
+            'final_weight': weight,
+            'reasons': skip_reasons
+        })
     
     # Convert back to int for pool generation
     final_weight = max(1, int(weight * 10))  # Scale up for precision
@@ -154,7 +189,8 @@ print(json.dumps({
     'timeout_seconds': mood_data.get('timeout_seconds', 300),
     'mood': '$MOOD',
     'today_mood': mood_context or 'no mood set',
-    'mood_id': today_mood.get('id', 'none') if today_mood else 'none'
+    'mood_id': today_mood.get('id', 'none') if today_mood else 'none',
+    'skipped': skipped_thoughts
 }))
 ")
 
