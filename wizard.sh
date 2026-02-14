@@ -216,7 +216,7 @@ section_identity() {
     echo -e "${GRAY}1.${NC} 😐 None (all business, no jokes)"
     echo -e "${GRAY}2.${NC} 🎭 Dry (subtle, witty, deadpan)"
     echo -e "${GRAY}3.${NC} 🤪 Absurd (weird, unexpected, delightfully bizarre)"
-    echo -e "${GRAY}4.${NC} 👨‍👧 Dad-jokes (puns, groan-worthy wordplay)"
+    echo -e "${GRAY}4.${NC} 👨👧 Dad-jokes (puns, groan-worthy wordplay)"
     
     while [[ -z "$HUMOR_LEVEL" ]]; do
         prompt "Pick their humor (1-4)"
