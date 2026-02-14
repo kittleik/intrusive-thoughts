@@ -33,7 +33,7 @@
     },
     "question_master": {
       "name": "Question Master ❓",
-      "description": "Asked Håvard 10 questions", 
+      "description": "Asked your human 10 questions", 
       "condition": "questions_asked_count",
       "threshold": 10,
       "tier": "silver",

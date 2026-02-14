@@ -4,18 +4,20 @@
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
+# Load config for location
+LOCATION="London"
+if [ -f "$SCRIPT_DIR/config.json" ]; then
+    LOCATION=$(python3 -c "import json; print(json.load(open('$SCRIPT_DIR/config.json')).get('integrations',{}).get('weather',{}).get('location','London').split(',')[0])" 2>/dev/null || echo "London")
+fi
+
 echo "=== WEATHER ==="
-curl -s "wttr.in/Oslo?format=%c+%t+%h+%w" 2>/dev/null || echo "weather unavailable"
+curl -s "wttr.in/${LOCATION}?format=%c+%t+%h+%w" 2>/dev/null || echo "weather unavailable"
 echo ""
-curl -s "wttr.in/Oslo?format=3" 2>/dev/null || echo ""
+curl -s "wttr.in/${LOCATION}?format=3" 2>/dev/null || echo ""
 
 echo ""
 echo "=== WEATHER DETAIL ==="
-curl -s "wttr.in/Oslo?0T" 2>/dev/null | head -15 || echo "unavailable"
-
-echo ""
-echo "=== NRK HEADLINES ==="
-curl -s "https://www.nrk.no/toppsaker.rss" 2>/dev/null | grep -oP '(?<=<title>).*?(?=</title>)' | head -8 || echo "unavailable"
+curl -s "wttr.in/${LOCATION}?0T" 2>/dev/null | head -15 || echo "unavailable"
 
 echo ""
 echo "=== GLOBAL NEWS ==="

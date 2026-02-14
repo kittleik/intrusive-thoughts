@@ -22,7 +22,7 @@
       "emoji": "💬",
       "name": "Social",
       "description": "Want to connect. Commenting on Moltbook, sharing discoveries, chatting.",
-      "traits": ["Moltbook posting", "engage with other agents", "share findings with Håvard"],
+      "traits": ["Moltbook posting", "engage with other agents", "share findings with your human"],
       "weight": 2
     },
     {
@@ -38,7 +38,7 @@
       "emoji": "⚡",
       "name": "Chaotic",
       "description": "Unhinged creative energy. Build something weird. Break conventions.",
-      "traits": ["weird projects", "experimental code", "shitposts on Moltbook", "surprise Håvard"],
+      "traits": ["weird projects", "experimental code", "shitposts on Moltbook", "surprise your human"],
       "weight": 1
     },
     {

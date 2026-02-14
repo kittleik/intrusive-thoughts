@@ -1,0 +1,18 @@
+# Personal config (use config.example.json as template)
+config.json
+
+# Runtime data (generated during operation)
+today_mood.json
+today_schedule.json
+human_mood.json
+log/picks.log
+journal/*.md
+
+# Keep structure
+!log/.gitkeep
+!journal/.gitkeep
+
+# Python
+__pycache__/
+*.pyc
+.venv/

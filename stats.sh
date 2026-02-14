@@ -1,19 +1,19 @@
 #!/bin/bash
 # Show stats about intrusive thought activity
-/home/hk/Projects/intrusive-thoughts="$(cd "$(dirname "$0")" && pwd)"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
 python3 << 'PYEOF'
-import json
-from datetime import datetime, timedelta
+import json, os
 from collections import Counter
 
-HISTORY_FILE = "/home/hk/Projects/intrusive-thoughts/history.json"
-PICKS_LOG = "/home/hk/Projects/intrusive-thoughts/log/picks.log"
+BASE = os.path.dirname(os.path.abspath("__file__"))
+SCRIPT_DIR = os.environ.get("SCRIPT_DIR", ".")
+HISTORY_FILE = os.path.join(SCRIPT_DIR, "history.json")
+PICKS_LOG = os.path.join(SCRIPT_DIR, "log", "picks.log")
 
 print("🧠 INTRUSIVE THOUGHTS — STATS")
 print("=" * 50)
 
-# Pick frequency from log
 try:
     with open(PICKS_LOG) as f:
         lines = [l.strip() for l in f if l.strip()]
@@ -36,7 +36,6 @@ try:
 except FileNotFoundError:
     print("\nNo picks log yet.")
 
-# History (what was actually done)
 try:
     with open(HISTORY_FILE) as f:
         history = json.load(f)

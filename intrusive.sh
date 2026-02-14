@@ -78,7 +78,7 @@ for t in mood_data['thoughts']:
         h_energy = human_mood.get('energy', 'neutral')
         h_vibe = human_mood.get('vibe', 'neutral')
         
-        # Supportive adjustments based on Håvard's detected mood
+        # Supportive adjustments based on your human's detected mood
         if h_mood == 'stressed' and thought_id in ['random-thought', 'ask-opinion', 'ask-preference']:
             weight *= 0.5  # Don't bother him when stressed
         elif h_mood == 'excited' and thought_id in ['share-discovery', 'pitch-idea', 'moltbook-post']:

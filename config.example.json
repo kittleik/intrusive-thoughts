@@ -1,28 +1,28 @@
 {
   "human": {
     "name": "Your Human",
-    "timezone": "Europe/Oslo",
-    "telegram_target": "@your_telegram_username",
+    "timezone": "UTC",
+    "telegram_target": "",
     "preferred_language": "en"
   },
   "agent": {
-    "name": "Your Agent",
-    "emoji": "🤖",
+    "name": "Your Agent Name",
+    "emoji": "🦞",
     "git_email": "agent@openclaw.local",
-    "git_name": "Your Agent"
+    "git_name": "Agent"
   },
   "integrations": {
     "moltbook": {
-      "enabled": true,
-      "api_key_file": "~/.config/moltbook/credentials.json",
-      "username": "your_moltbook_username"
+      "enabled": false,
+      "api_key_file": "",
+      "username": ""
     },
     "telegram": {
       "enabled": true,
       "channel": "telegram"
     },
     "weather": {
-      "location": "Oslo, Norway",
+      "location": "London, UK",
       "api_key": ""
     }
   },
@@ -35,7 +35,7 @@
     "morning_mood_time": "07:00",
     "night_sessions": ["03:00", "04:30", "05:45", "06:15", "07:17"],
     "day_sessions": ["11:00", "16:00", "20:00"],
-    "timezone": "Europe/Oslo"
+    "timezone": "UTC"
   },
   "customization": {
     "mood_influence_strength": 1.0,
