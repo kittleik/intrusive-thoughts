@@ -1,21 +1,23 @@
 #!/usr/bin/env python3
-"""🧠 Intrusive Thoughts Dashboard v2 — Interactive tuning controls."""
+"""🧠 Intrusive Thoughts Dashboard v2 — Night workshop & journal viewer edition."""
 
 import json
 import os
 import subprocess
+import re
+import markdown
 from http.server import HTTPServer, SimpleHTTPRequestHandler
-from datetime import datetime
+from datetime import datetime, timedelta
 from collections import Counter
 from pathlib import Path
+from urllib.parse import parse_qs, urlparse
 from config import get_file_path, get_data_dir, get_dashboard_port, get_agent_name, get_agent_emoji
 
 PORT = get_dashboard_port()
 HISTORY_FILE = get_file_path("history.json")
 THOUGHTS_FILE = get_file_path("thoughts.json")
-MOODS_FILE = get_file_path("moods.json")
-TODAY_MOOD_FILE = get_file_path("today_mood.json")
-TODAY_SCHEDULE_FILE = get_file_path("today_schedule.json")
+ACHIEVEMENTS_FILE = get_file_path("achievements.json")
+ACHIEVEMENTS_EARNED_FILE = get_file_path("achievements_earned.json")
 PICKS_LOG = get_data_dir() / "log" / "picks.log"
 
 
@@ -47,21 +49,22 @@ def load_thoughts():
         return {}
 
 
-def load_moods():
+def load_all_achievements():
     try:
-        return json.loads(MOODS_FILE.read_text())
+        return json.loads(ACHIEVEMENTS_FILE.read_text())
     except:
-        return {}
+        return {"achievements": {}, "tiers": {}}
 
 
-def save_thoughts(data):
-    """Save updated thoughts data."""
-    THOUGHTS_FILE.write_text(json.dumps(data, indent=2))
-
-
-def save_today_mood(data):
-    """Save updated today mood data."""
-    TODAY_MOOD_FILE.write_text(json.dumps(data, indent=2))
+def load_earned_achievements():
+    try:
+        data = json.loads(ACHIEVEMENTS_EARNED_FILE.read_text())
+        if isinstance(data, list):
+            # Convert old format to new format
+            return {"earned": data, "total_points": sum(a.get("points", 0) for a in data)}
+        return data
+    except:
+        return {"earned": [], "total_points": 0}
 
 
 def load_mood_history():
@@ -79,13 +82,6 @@ def load_streaks():
         return {"current_streaks": {}}
 
 
-def load_achievements():
-    try:
-        return json.loads(get_file_path("achievements_earned.json").read_text())
-    except:
-        return {"earned": [], "total_points": 0}
-
-
 def load_soundtracks():
     try:
         return json.loads(get_file_path("soundtracks.json").read_text())
@@ -95,45 +91,179 @@ def load_soundtracks():
 
 def load_today_mood():
     try:
-        return json.loads(TODAY_MOOD_FILE.read_text())
+        return json.loads(get_file_path("today_mood.json").read_text())
     except:
         return {}
 
 
-def load_today_schedule():
+def load_moods():
     try:
-        return json.loads(TODAY_SCHEDULE_FILE.read_text())
+        return json.loads(get_file_path("moods.json").read_text())
     except:
         return {}
 
 
-def load_presets():
-    """Load all preset files."""
-    presets = []
-    presets_dir = Path(__file__).parent / "presets"
-    if presets_dir.exists():
-        for preset_file in presets_dir.glob("*.json"):
-            try:
-                data = json.loads(preset_file.read_text())
-                data["filename"] = preset_file.name
-                presets.append(data)
-            except:
-                continue
-    return presets
-
-
-def load_journal_entries():
+def get_journal_dates():
+    """Get all available journal dates."""
     try:
         journal_dir = get_data_dir() / "journal"
-        entries = []
-        if journal_dir.exists():
-            for file in journal_dir.glob("*.md"):
-                entries.append({
-                    "date": file.stem,
-                    "content": file.read_text()[:300] + "..." if len(file.read_text()) > 300 else file.read_text()
-                })
-        return sorted(entries, key=lambda x: x["date"], reverse=True)[:5]
+        if not journal_dir.exists():
+            return []
+        dates = []
+        for file in journal_dir.glob("*.md"):
+            dates.append(file.stem)
+        return sorted(dates, reverse=True)
     except:
+        return []
+
+
+def get_journal_entry(date):
+    """Get full journal entry for a specific date."""
+    try:
+        journal_dir = get_data_dir() / "journal"
+        journal_file = journal_dir / f"{date}.md"
+        if journal_file.exists():
+            content = journal_file.read_text()
+            # Convert markdown to HTML
+            html_content = markdown.markdown(content, extensions=['extra', 'codehilite'])
+            
+            # Get mood context for that date
+            mood_context = get_mood_context_for_date(date)
+            
+            return {
+                "date": date,
+                "content": content,
+                "html_content": html_content,
+                "mood_context": mood_context
+            }
+        return None
+    except:
+        return None
+
+
+def get_mood_context_for_date(date):
+    """Get mood context (emoji, name, weather, news) for a date."""
+    mood_history = load_mood_history()
+    moods_data = load_moods()
+    
+    for entry in mood_history:
+        if entry.get("date") == date:
+            mood_id = entry.get("mood_id", "")
+            # Find mood details
+            for mood in moods_data.get("base_moods", []):
+                if mood.get("id") == mood_id:
+                    return {
+                        "emoji": mood.get("emoji", "🤔"),
+                        "name": mood.get("name", mood_id),
+                        "description": mood.get("description", ""),
+                        "weather": entry.get("weather", ""),
+                        "news_vibe": entry.get("news_vibe", "")
+                    }
+    
+    return {"emoji": "🤔", "name": "Unknown", "description": ""}
+
+
+def get_night_workshop_timeline():
+    """Get timeline of all night workshop sessions."""
+    history = load_history()
+    night_entries = [entry for entry in history if entry.get("mood") == "night"]
+    
+    # Sort by timestamp
+    night_entries.sort(key=lambda x: x.get("timestamp", ""), reverse=True)
+    
+    return night_entries
+
+
+def get_day_vs_night_stats():
+    """Compare day vs night activity stats."""
+    history = load_history()
+    day_entries = [e for e in history if e.get("mood") == "day"]
+    night_entries = [e for e in history if e.get("mood") == "night"]
+    
+    def get_stats(entries):
+        if not entries:
+            return {"count": 0, "avg_energy": 0, "avg_vibe": 0, "energy_dist": {}, "vibe_dist": {}}
+        
+        energy_values = {"low": 1, "medium": 2, "high": 3}
+        vibe_values = {"negative": 1, "neutral": 2, "positive": 3}
+        
+        energies = [energy_values.get(e.get("energy"), 2) for e in entries]
+        vibes = [vibe_values.get(e.get("vibe"), 2) for e in entries]
+        
+        energy_dist = Counter(e.get("energy", "medium") for e in entries)
+        vibe_dist = Counter(e.get("vibe", "neutral") for e in entries)
+        
+        return {
+            "count": len(entries),
+            "avg_energy": sum(energies) / len(energies),
+            "avg_vibe": sum(vibes) / len(vibes),
+            "energy_dist": dict(energy_dist),
+            "vibe_dist": dict(vibe_dist)
+        }
+    
+    day_stats = get_stats(day_entries)
+    night_stats = get_stats(night_entries)
+    
+    # Determine best mood for each
+    best_day_insight = "Not enough data"
+    best_night_insight = "Not enough data"
+    
+    if day_stats["count"] > 0 and night_stats["count"] > 0:
+        if day_stats["avg_energy"] > night_stats["avg_energy"]:
+            best_day_insight = "Day work shows higher energy levels"
+        else:
+            best_night_insight = "Night work shows higher energy levels"
+    
+    return {
+        "day": day_stats,
+        "night": night_stats,
+        "insights": {
+            "best_day": best_day_insight,
+            "best_night": best_night_insight
+        }
+    }
+
+
+def get_recent_night_commits():
+    """Get recent commits made during night hours (22:00-08:00)."""
+    try:
+        # Check if we're in a git repository
+        result = subprocess.run(['git', 'rev-parse', '--is-inside-work-tree'], 
+                              capture_output=True, text=True, timeout=5)
+        if result.returncode != 0:
+            return []
+        
+        # Get commits from last 7 days during night hours
+        night_commits = []
+        for days_ago in range(7):
+            date = (datetime.now() - timedelta(days=days_ago)).strftime('%Y-%m-%d')
+            
+            # Morning commits (00:00-08:00)
+            morning_cmd = ['git', 'log', '--since', f'{date} 00:00', '--until', f'{date} 08:00', 
+                          '--format=%H|%s|%ai', '--no-merges']
+            
+            # Evening commits (22:00-23:59)
+            evening_cmd = ['git', 'log', '--since', f'{date} 22:00', '--until', f'{date} 23:59',
+                          '--format=%H|%s|%ai', '--no-merges']
+            
+            for cmd in [morning_cmd, evening_cmd]:
+                result = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
+                if result.returncode == 0 and result.stdout.strip():
+                    for line in result.stdout.strip().split('\n'):
+                        if '|' in line:
+                            parts = line.split('|', 2)
+                            if len(parts) == 3:
+                                night_commits.append({
+                                    "hash": parts[0][:8],
+                                    "message": parts[1],
+                                    "timestamp": parts[2]
+                                })
+        
+        # Sort by timestamp, most recent first
+        night_commits.sort(key=lambda x: x["timestamp"], reverse=True)
+        return night_commits[:10]  # Limit to 10 most recent
+        
+    except Exception:
         return []
 
 
@@ -149,63 +279,21 @@ def get_productivity_stats():
     return {"insights": [], "moods": {}}
 
 
-def trigger_impulse():
-    """Run intrusive.sh day command and return result."""
-    try:
-        result = subprocess.run(['./intrusive.sh', 'day'], 
-                              cwd=Path(__file__).parent,
-                              capture_output=True, text=True, timeout=30)
-        return {"success": True, "output": result.stdout, "error": result.stderr}
-    except Exception as e:
-        return {"success": False, "error": str(e)}
-
-
-def get_effective_weight(thought_weight, thought_id, today_mood_data, moods_data):
-    """Calculate effective weight with mood modifiers."""
-    if not today_mood_data or not moods_data:
-        return thought_weight
-    
-    mood_id = today_mood_data.get("id")
-    if not mood_id:
-        return thought_weight
-    
-    # Find the mood data
-    mood_info = None
-    for mood in moods_data.get("base_moods", []):
-        if mood["id"] == mood_id:
-            mood_info = mood
-            break
-    
-    if not mood_info:
-        return thought_weight
-    
-    # Simple modifier based on whether thought appears in boosted/dampened traits
-    boosted_traits = today_mood_data.get("boosted_traits", [])
-    dampened_traits = today_mood_data.get("dampened_traits", [])
-    
-    modifier = 1.0
-    if thought_id in boosted_traits:
-        modifier = 1.5
-    elif thought_id in dampened_traits:
-        modifier = 0.7
-    
-    return round(thought_weight * modifier, 2)
-
-
 def build_html():
     history = load_history()
     picks = load_picks()
     thoughts = load_thoughts()
-    moods_data = load_moods()
-    today_mood = load_today_mood()
     mood_history = load_mood_history()
     streaks = load_streaks()
-    achievements = load_achievements()
+    all_achievements = load_all_achievements()
+    earned_achievements = load_earned_achievements()
     soundtracks = load_soundtracks()
-    journal_entries = load_journal_entries()
+    today_mood = load_today_mood()
+    journal_dates = get_journal_dates()
+    night_timeline = get_night_workshop_timeline()
+    day_vs_night = get_day_vs_night_stats()
+    night_commits = get_recent_night_commits()
     productivity_stats = get_productivity_stats()
-    presets = load_presets()
-    schedule = load_today_schedule()
 
     # Stats
     thought_counts = Counter(p.get("thought", "?") for p in picks)
@@ -219,29 +307,40 @@ def build_html():
     # Recent history
     recent = history[-20:][::-1]
 
-    # Build thought catalog with effective weights
-    all_thoughts = []
-    for mood_name, mood_data in thoughts.get("moods", {}).items():
-        for t in mood_data.get("thoughts", []):
-            weight = t.get("weight", 1)
-            effective_weight = get_effective_weight(weight, t["id"], today_mood, moods_data)
-            all_thoughts.append({
-                "id": t["id"],
-                "mood": mood_name,
-                "weight": weight,
-                "effective_weight": effective_weight,
-                "prompt": t["prompt"],
-                "times_picked": thought_counts.get(t["id"], 0),
-            })
+    # Build achievement showcase
+    achievements_data = all_achievements.get("achievements", {})
+    tiers_data = all_achievements.get("tiers", {})
+    earned_list = earned_achievements.get("earned", [])
+    earned_ids = set(a.get("id") for a in earned_list)
+    total_points = earned_achievements.get("total_points", 0)
+
+    # Create achievement display list
+    achievement_showcase = []
+    for aid, achievement in achievements_data.items():
+        is_earned = aid in earned_ids
+        tier = achievement.get("tier", "bronze")
+        tier_info = tiers_data.get(tier, {"emoji": "🏆", "color": "#888"})
+        
+        achievement_showcase.append({
+            "id": aid,
+            "name": achievement.get("name", "Unknown"),
+            "description": achievement.get("description", ""),
+            "tier": tier,
+            "points": achievement.get("points", 0),
+            "emoji": tier_info.get("emoji", "🏆"),
+            "color": tier_info.get("color", "#888"),
+            "is_earned": is_earned
+        })
+
+    # Sort achievements: earned first, then by tier
+    tier_order = {"platinum": 4, "gold": 3, "silver": 2, "bronze": 1}
+    achievement_showcase.sort(key=lambda x: (x["is_earned"], tier_order.get(x["tier"], 0)), reverse=True)
 
     # Mood history for graph (last 14 days)
     mood_graph_data = mood_history[-14:] if mood_history else []
     
     # Current streaks
     current_streaks = streaks.get("current_streaks", {})
-    
-    # Recent achievements
-    recent_achievements = achievements.get("earned", [])[-5:][::-1]
     
     # Today's soundtrack
     today_soundtrack = ""
@@ -263,8 +362,14 @@ def build_html():
   :root {{ --bg: #0a0a0f; --card: #12121a; --border: #1e1e2e; --text: #c9c9d9; --accent: #f59e0b; --accent2: #8b5cf6; --dim: #555568; --success: #22c55e; --warning: #eab308; --danger: #ef4444; }}
   * {{ margin: 0; padding: 0; box-sizing: border-box; }}
   body {{ background: var(--bg); color: var(--text); font-family: 'SF Mono', 'Fira Code', monospace; padding: 2rem; max-width: 1400px; margin: 0 auto; }}
-  h1 {{ color: var(--accent); font-size: 1.8rem; margin-bottom: 0.3rem; }}
+  h1 {{ color: var(--accent); font-size: 2rem; margin-bottom: 0.3rem; }}
   .subtitle {{ color: var(--dim); margin-bottom: 2rem; }}
+  .nav-tabs {{ display: flex; gap: 0.5rem; margin-bottom: 2rem; }}
+  .nav-tab {{ padding: 0.8rem 1.5rem; background: var(--card); border: 1px solid var(--border); border-radius: 8px; cursor: pointer; transition: all 0.3s; }}
+  .nav-tab.active {{ background: var(--accent); color: var(--bg); }}
+  .nav-tab:hover {{ background: var(--border); }}
+  .tab-content {{ display: none; }}
+  .tab-content.active {{ display: block; }}
   .grid {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 2rem; }}
   .grid-2 {{ display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 2rem; }}
   .stat-card {{ background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; text-align: center; }}
@@ -283,298 +388,259 @@ def build_html():
   .mood-night {{ background: #1e1b4b; color: #a78bfa; }}
   .mood-day {{ background: #422006; color: #fbbf24; }}
   .history-item .summary {{ margin-top: 0.3rem; font-size: 0.9rem; }}
-  .thought-item {{ border-bottom: 1px solid var(--border); padding: 0.8rem 0; display: flex; justify-content: space-between; align-items: start; }}
-  .thought-item:last-child {{ border: none; }}
-  .thought-item .prompt {{ font-size: 0.85rem; flex: 1; }}
-  .thought-item .meta {{ text-align: right; flex-shrink: 0; margin-left: 1rem; font-size: 0.75rem; color: var(--dim); }}
   .empty {{ color: var(--dim); font-style: italic; text-align: center; padding: 2rem; }}
   .mood-dot {{ width: 12px; height: 12px; border-radius: 50%; margin: 0 4px; display: inline-block; }}
-  .streak-item {{ background: var(--border); padding: 0.8rem; border-radius: 8px; margin-bottom: 0.5rem; }}
-  .achievement-item {{ display: flex; align-items: center; margin-bottom: 0.8rem; padding: 0.8rem; background: var(--border); border-radius: 8px; }}
-  .achievement-tier {{ margin-right: 0.8rem; font-size: 1.2rem; }}
-  .achievement-info h4 {{ color: var(--accent); margin-bottom: 0.2rem; }}
-  .achievement-info .desc {{ color: var(--dim); font-size: 0.8rem; }}
-  .journal-entry {{ background: var(--border); padding: 1rem; border-radius: 8px; margin-bottom: 1rem; }}
-  .journal-date {{ color: var(--accent); font-size: 0.85rem; margin-bottom: 0.5rem; }}
-  .journal-content {{ font-size: 0.9rem; line-height: 1.4; }}
-  .insight-item {{ background: var(--border); padding: 0.8rem; border-radius: 8px; margin-bottom: 0.5rem; font-size: 0.9rem; }}
-  .soundtrack {{ background: linear-gradient(135deg, var(--accent2), var(--accent)); padding: 1rem; border-radius: 12px; text-align: center; color: white; margin-bottom: 2rem; }}
-
-  /* NEW v2 STYLES */
-  .weight-editor {{ display: flex; align-items: center; gap: 1rem; padding: 0.8rem 0; border-bottom: 1px solid var(--border); }}
-  .weight-editor:last-child {{ border: none; }}
-  .weight-editor .thought-info {{ flex: 1; }}
-  .weight-editor .thought-id {{ color: var(--accent); font-size: 0.9rem; font-weight: bold; }}
-  .weight-editor .thought-prompt {{ color: var(--text); font-size: 0.8rem; margin-top: 0.2rem; }}
-  .weight-editor .weight-controls {{ display: flex; align-items: center; gap: 0.5rem; }}
-  .weight-input {{ background: var(--border); color: var(--text); border: 1px solid var(--dim); border-radius: 6px; padding: 0.4rem; width: 70px; text-align: center; }}
-  .weight-bar {{ height: 8px; background: linear-gradient(90deg, var(--accent2), var(--accent)); border-radius: 4px; min-width: 4px; }}
-  .save-btn {{ background: var(--success); color: white; border: none; padding: 0.4rem 0.8rem; border-radius: 6px; cursor: pointer; font-size: 0.8rem; }}
-  .save-btn:hover {{ opacity: 0.8; }}
-  .save-btn:disabled {{ background: var(--dim); cursor: not-allowed; }}
-
-  .mood-selector {{ display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem; }}
-  .mood-dropdown {{ background: var(--border); color: var(--text); border: 1px solid var(--dim); border-radius: 6px; padding: 0.5rem; }}
-  .set-mood-btn, .trigger-btn {{ background: var(--accent2); color: white; border: none; padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer; }}
-  .set-mood-btn:hover, .trigger-btn:hover {{ opacity: 0.8; }}
-  .trigger-result {{ background: var(--border); padding: 1rem; border-radius: 8px; margin-top: 1rem; font-family: monospace; font-size: 0.8rem; white-space: pre-wrap; }}
-
-  .mood-viewer {{ margin-bottom: 1.5rem; }}
-  .mood-viewer h3 {{ color: var(--accent); font-size: 1rem; margin-bottom: 0.5rem; }}
-  .mood-traits {{ display: flex; flex-wrap: wrap; gap: 0.3rem; margin-bottom: 0.8rem; }}
-  .mood-traits .boost {{ background: var(--success); color: white; padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.7rem; }}
-  .mood-traits .dampen {{ background: var(--danger); color: white; padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.7rem; }}
-
-  .schedule-item {{ display: flex; align-items: center; gap: 1rem; padding: 0.5rem; border-radius: 6px; margin-bottom: 0.5rem; }}
-  .schedule-item.fired {{ background: var(--border); }}
-  .schedule-item.upcoming {{ background: var(--success); color: white; }}
-  .schedule-time {{ font-weight: bold; min-width: 60px; }}
-  .schedule-status {{ font-size: 0.8rem; padding: 0.2rem 0.5rem; border-radius: 4px; }}
-  .status-fired {{ background: var(--dim); color: white; }}
-  .status-upcoming {{ background: var(--warning); color: black; }}
-
-  .preset-item {{ background: var(--border); padding: 1rem; border-radius: 8px; margin-bottom: 1rem; }}
-  .preset-header {{ display: flex; justify-content: space-between; align-items: start; margin-bottom: 0.5rem; }}
-  .preset-name {{ color: var(--accent); font-weight: bold; }}
-  .preset-desc {{ color: var(--text); font-size: 0.9rem; margin-bottom: 0.5rem; }}
-  .preset-weights {{ color: var(--dim); font-size: 0.8rem; }}
-  .apply-btn {{ background: var(--accent); color: white; border: none; padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer; }}
-  .apply-btn:hover {{ opacity: 0.8; }}
-
+  .achievement-item {{ display: flex; align-items: center; margin-bottom: 0.8rem; padding: 1rem; border-radius: 8px; transition: all 0.3s; border: 2px solid transparent; }}
+  .achievement-item.earned {{ background: linear-gradient(135deg, var(--card), #1a1a2e); border-color: var(--accent); box-shadow: 0 0 20px rgba(245, 158, 11, 0.3); }}
+  .achievement-item.unearned {{ background: var(--border); opacity: 0.6; }}
+  .achievement-tier {{ margin-right: 1rem; font-size: 1.5rem; }}
+  .achievement-info h4 {{ color: var(--accent); margin-bottom: 0.3rem; }}
+  .achievement-info .desc {{ color: var(--dim); font-size: 0.85rem; margin-bottom: 0.3rem; }}
+  .achievement-info .points {{ color: var(--accent2); font-size: 0.8rem; font-weight: bold; }}
+  .journal-nav {{ display: flex; justify-content: center; gap: 1rem; margin-bottom: 1.5rem; }}
+  .journal-nav button {{ padding: 0.5rem 1rem; background: var(--card); border: 1px solid var(--border); border-radius: 6px; color: var(--text); cursor: pointer; }}
+  .journal-nav button:hover {{ background: var(--border); }}
+  .journal-nav button:disabled {{ opacity: 0.5; cursor: not-allowed; }}
+  .journal-entry {{ background: var(--border); border-radius: 8px; padding: 1.5rem; margin-bottom: 1rem; }}
+  .journal-date {{ color: var(--accent); font-size: 1.1rem; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem; }}
+  .journal-content {{ line-height: 1.6; }}
+  .journal-content h1, .journal-content h2, .journal-content h3 {{ color: var(--accent); margin: 1rem 0 0.5rem; }}
+  .journal-content p {{ margin-bottom: 1rem; }}
+  .journal-content ul, .journal-content ol {{ margin: 0.5rem 0 1rem 2rem; }}
+  .journal-content code {{ background: var(--card); padding: 0.2rem 0.4rem; border-radius: 4px; }}
+  .journal-content pre {{ background: var(--card); padding: 1rem; border-radius: 8px; overflow-x: auto; margin: 1rem 0; }}
+  .mood-context {{ display: flex; align-items: center; gap: 0.5rem; font-size: 0.9rem; color: var(--dim); }}
+  .timeline-item {{ border-left: 3px solid var(--border); padding: 1rem 0 1rem 1.5rem; position: relative; }}
+  .timeline-item::before {{ content: ''; width: 10px; height: 10px; border-radius: 50%; position: absolute; left: -6px; top: 1.2rem; }}
+  .timeline-item.positive::before {{ background: var(--success); }}
+  .timeline-item.negative::before {{ background: var(--danger); }}
+  .timeline-item.neutral::before {{ background: var(--dim); }}
+  .timeline-item .timestamp {{ color: var(--accent); font-size: 0.8rem; }}
+  .timeline-item .thought-id {{ font-weight: bold; margin: 0.3rem 0; }}
+  .timeline-item .energy-vibe {{ font-size: 0.8rem; color: var(--dim); }}
+  .commit-item {{ background: var(--border); padding: 0.8rem; border-radius: 8px; margin-bottom: 0.5rem; }}
+  .commit-hash {{ color: var(--accent); font-family: monospace; font-size: 0.8rem; }}
+  .commit-message {{ margin-top: 0.3rem; }}
+  .commit-time {{ color: var(--dim); font-size: 0.75rem; margin-top: 0.3rem; }}
+  .stats-comparison {{ display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; }}
+  .stats-column h3 {{ text-align: center; margin-bottom: 1rem; }}
+  .stats-column.day h3 {{ color: #fbbf24; }}
+  .stats-column.night h3 {{ color: #a78bfa; }}
+  .stats-metric {{ display: flex; justify-content: space-between; margin-bottom: 0.5rem; padding: 0.5rem; background: var(--border); border-radius: 4px; }}
+  .insight-box {{ background: linear-gradient(135deg, var(--accent2), var(--accent)); color: white; padding: 1rem; border-radius: 8px; margin-top: 1rem; text-align: center; }}
   footer {{ text-align: center; color: var(--dim); font-size: 0.75rem; margin-top: 2rem; }}
+  .loading {{ text-align: center; color: var(--dim); padding: 2rem; }}
 </style>
 </head>
 <body>
 <h1>🧠 Intrusive Thoughts v2</h1>
-<p class="subtitle">Interactive tuning controls — now with weight editing, mood overrides, and preset management</p>
+<p class="subtitle">Night workshop & journal viewer — what Ember builds when you're sleeping 🌙</p>
 
-{f'<div class="soundtrack">{today_soundtrack}</div>' if today_soundtrack else ''}
+{f'<div class="section"><div style="background: linear-gradient(135deg, var(--accent2), var(--accent)); padding: 1rem; border-radius: 12px; text-align: center; color: white; font-weight: bold;">{today_soundtrack}</div></div>' if today_soundtrack else ''}
 
-<div class="grid">
-  <div class="stat-card"><div class="number">{total_picks}</div><div class="label">Total Impulses</div></div>
-  <div class="stat-card"><div class="number">{total_completed}</div><div class="label">Completed</div></div>
-  <div class="stat-card"><div class="number">{len(achievements.get('earned', []))}</div><div class="label">🏆 Achievements</div></div>
-  <div class="stat-card"><div class="number">{achievements.get('total_points', 0)}</div><div class="label">🎯 Points</div></div>
+<div class="nav-tabs">
+  <div class="nav-tab active" onclick="switchTab('overview')">📊 Overview</div>
+  <div class="nav-tab" onclick="switchTab('journal')">📓 Journal</div>
+  <div class="nav-tab" onclick="switchTab('night-workshop')">🌙 Night Workshop</div>
+  <div class="nav-tab" onclick="switchTab('achievements')">🏆 Achievements</div>
+  <div class="nav-tab" onclick="switchTab('stats')">📈 Day vs Night</div>
 </div>
 
-<!-- NEW v2 SECTIONS -->
-
-<div class="grid-2">
-  <div class="section">
-    <h2>🎛️ Thought Weight Editor</h2>
-    <div id="weight-editor">
-      {''.join(f'''
-      <div class="weight-editor">
-        <div class="thought-info">
-          <div class="thought-id">{t["id"]}</div>
-          <div class="thought-prompt">{t["prompt"][:80]}{'...' if len(t["prompt"]) > 80 else ''}</div>
-        </div>
-        <div class="weight-controls">
-          <span style="font-size: 0.8rem; color: var(--dim);">Base: {t["weight"]}</span>
-          <input type="number" class="weight-input" value="{t["weight"]}" min="0.1" max="3.0" step="0.1" data-thought-id="{t["id"]}" data-mood="{t["mood"]}">
-          <span style="font-size: 0.8rem; color: var(--accent);">Effective: {t["effective_weight"]}</span>
-          <div class="weight-bar" style="width: {min(t["effective_weight"] * 30, 100)}px;"></div>
-          <button class="save-btn" onclick="saveWeight('{t["id"]}', '{t["mood"]}')">Save</button>
-        </div>
-      </div>
-      ''' for t in all_thoughts)}
-    </div>
+<div id="overview" class="tab-content active">
+  <div class="grid">
+    <div class="stat-card"><div class="number">{total_picks}</div><div class="label">Total Impulses</div></div>
+    <div class="stat-card"><div class="number">{total_completed}</div><div class="label">Completed</div></div>
+    <div class="stat-card"><div class="number">{len(earned_achievements.get('earned', []))}</div><div class="label">🏆 Achievements</div></div>
+    <div class="stat-card"><div class="number">{total_points}</div><div class="label">🎯 Points</div></div>
   </div>
 
-  <div class="section">
-    <h2>🌊 Mood Boost/Dampen Viewer</h2>
-    {''.join(f'''
-    <div class="mood-viewer">
-      <h3>{mood.get("emoji", "")} {mood.get("name", "")} (weight: {mood.get("weight", 1)})</h3>
-      <div class="mood-traits">
-        {f'<span class="boost">Boosted: {", ".join(mood.get("traits", []))}</span>' if mood.get("traits") else ''}
+  <div class="grid-2">
+    <div class="section">
+      <h2>📈 Mood History (Last 14 Days)</h2>
+      {''.join(f'<span class="mood-dot" style="background: hsl({hash(m.get("mood_id",""))%360}, 70%, 60%)" title="{m.get("date","")} - {m.get("mood_id","")}"></span>' for m in mood_graph_data) if mood_graph_data else '<div class="empty">No mood history yet</div>'}
+      <div style="margin-top: 1rem; font-size: 0.8rem; color: var(--dim);">
+        {f"Recent pattern: {' → '.join([m.get('mood_id','?')[:4] for m in mood_graph_data[-5:]])}" if len(mood_graph_data) >= 5 else "Building mood patterns..."}
       </div>
     </div>
-    ''' for mood in moods_data.get("base_moods", [])) if moods_data.get("base_moods") else '<div class="empty">No mood data available</div>'}
+
+    <div class="section">
+      <h2>🔥 Current Streaks</h2>
+      {f'''<div style="background: var(--border); padding: 0.8rem; border-radius: 8px; margin-bottom: 0.5rem;"><strong>Activity:</strong> {current_streaks.get('activity_type', ['none'])[0]} × {len(current_streaks.get('activity_type', []))}</div>''' if current_streaks.get('activity_type') else ''}
+      {f'''<div style="background: var(--border); padding: 0.8rem; border-radius: 8px; margin-bottom: 0.5rem;"><strong>Mood:</strong> {current_streaks.get('mood', ['none'])[0]} × {len(current_streaks.get('mood', []))}</div>''' if current_streaks.get('mood') else ''}
+      {'<div class="empty">No active streaks</div>' if not current_streaks.get('activity_type') and not current_streaks.get('mood') else ''}
+    </div>
+  </div>
+
+  {"<div class='section'><h2>💻 What I Built Last Night</h2>" + (''.join(f'<div class="commit-item"><div class="commit-hash">{commit["hash"]}</div><div class="commit-message">{commit["message"]}</div><div class="commit-time">{commit["timestamp"]}</div></div>' for commit in night_commits) if night_commits else '<div class="empty">No night commits found — either git is not available or I haven\'t been coding after hours</div>') + "</div>"}
+
+  <div class="section">
+    <h2>🎯 Most Common Impulses</h2>
+    <div class="bar-chart">
+      {''.join(f'''<div class="bar-row"><div class="bar-label">{name}</div><div class="bar" style="width: {max(count / max(top_thoughts[0][1], 1) * 100, 2):.0f}%"></div><div class="bar-count">{count}</div></div>''' for name, count in top_thoughts) if top_thoughts else '<div class="empty">No data yet — check back after some impulses fire</div>'}
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>📝 Recent Activity</h2>
+    {''.join(f"""<div class="history-item"><span class="time">{e.get('timestamp','?')[:16].replace('T',' ')}</span><span class="mood-tag mood-{e.get('mood','day')}">{e.get('mood','?')}</span> <strong>{e.get('thought_id','?')}</strong> <span style="color: var(--{'success' if e.get('vibe') == 'positive' else 'danger' if e.get('vibe') == 'negative' else 'dim'}); font-size: 0.8rem;">[{e.get('energy','?')}/{e.get('vibe','?')}]</span><div class="summary">{e.get('summary','')}</div></div>""" for e in recent) if recent else '<div class="empty">Nothing yet. First night session fires at 03:17 🌙</div>'}
   </div>
 </div>
 
-<div class="grid-2">
+<div id="journal" class="tab-content">
   <div class="section">
-    <h2>🎯 Live Mood Override</h2>
-    <div class="mood-selector">
-      <select class="mood-dropdown" id="mood-select">
-        <option value="">Select mood...</option>
-        {''.join(f'<option value="{mood["id"]}" {"selected" if today_mood.get("id") == mood["id"] else ""}>{mood["emoji"]} {mood["name"]}</option>' for mood in moods_data.get("base_moods", []))}
-      </select>
-      <button class="set-mood-btn" onclick="setMood()">Set Mood</button>
-      <button class="trigger-btn" onclick="triggerImpulse()">Trigger Impulse Now</button>
+    <h2>📓 Full Journal Viewer</h2>
+    {f'<div class="journal-nav"><button onclick="prevJournalDate()" id="prevBtn">← Previous</button><button onclick="nextJournalDate()" id="nextBtn">Next →</button></div>' if journal_dates else ''}
+    <div id="journal-viewer">
+      {"<div class='loading'>Loading journal...</div>" if journal_dates else '<div class="empty">📖 No journal entries yet.<br><br>💡 <strong>Journals are generated after night workshops</strong><br><br>Your intrusive thoughts get processed into reflective journal entries during night sessions. Come back after some late-night productivity!</div>'}
     </div>
-    <div id="current-mood">
-      {f'<strong>Current:</strong> {today_mood.get("emoji", "")} {today_mood.get("name", "None")} ({today_mood.get("date", "")})<br><em>{today_mood.get("description", "")}</em>' if today_mood else '<em>No mood set for today</em>'}
-    </div>
-    <div id="trigger-result"></div>
   </div>
+</div>
 
+<div id="night-workshop" class="tab-content">
   <div class="section">
-    <h2>📅 Today's Schedule</h2>
-    <div id="schedule-viewer">
-      {f'''
-      <div style="margin-bottom: 1rem; color: var(--dim); font-size: 0.8rem;">Generated: {schedule.get("generated_at", "Unknown")}</div>
-      {''.join(f"""
-      <div class="schedule-item {'fired' if item.get('fired') else 'upcoming'}">
-        <div class="schedule-time">{item.get('time', '??:??')}</div>
-        <div style="flex: 1;">{item.get('thought_type', 'Unknown')}</div>
-        <div class="schedule-status {'status-fired' if item.get('fired') else 'status-upcoming'}">
-          {'Fired' if item.get('fired') else 'Upcoming'}
+    <h2>🌙 Night Workshop Timeline</h2>
+    {''.join(f'''<div class="timeline-item {e.get('vibe', 'neutral')}"><div class="timestamp">{e.get('timestamp', '?')[:16].replace('T', ' ')}</div><div class="thought-id">{e.get('thought_id', '?')}</div><div class="energy-vibe">Energy: {e.get('energy', '?')} | Vibe: {e.get('vibe', '?')}</div><div style="margin-top: 0.5rem;">{e.get('summary', '')}</div></div>''' for e in night_timeline) if night_timeline else '<div class="empty">🌙 No night workshop sessions yet<br><br>Night workshops happen when the mood is set to "night" — these are deep focus sessions that happen after hours. Your timeline will populate as you work through the night.</div>'}
+  </div>
+</div>
+
+<div id="achievements" class="tab-content">
+  <div class="section">
+    <h2>🏆 Achievement Gallery</h2>
+    <div style="text-align: center; margin-bottom: 2rem; font-size: 1.2rem; color: var(--accent);">
+      <strong>Total Points: {total_points}</strong>
+    </div>
+    {''.join(f'''<div class="achievement-item {'earned' if ach['is_earned'] else 'unearned'}"><div class="achievement-tier">{ach['emoji']}</div><div class="achievement-info"><h4>{ach['name']}</h4><div class="desc">{ach['description']}</div><div class="points">+{ach['points']} points</div></div></div>''' for ach in achievement_showcase) if achievement_showcase else '<div class="empty">No achievements defined yet</div>'}
+  </div>
+</div>
+
+<div id="stats" class="tab-content">
+  <div class="section">
+    <h2>📈 Day vs Night Comparison</h2>
+    <div class="stats-comparison">
+      <div class="stats-column day">
+        <h3>☀️ Day Work ({day_vs_night['day']['count']} sessions)</h3>
+        <div class="stats-metric"><span>Avg Energy:</span><span>{day_vs_night['day']['avg_energy']:.1f}/3</span></div>
+        <div class="stats-metric"><span>Avg Vibe:</span><span>{day_vs_night['day']['avg_vibe']:.1f}/3</span></div>
+        <div style="margin-top: 1rem;">
+          <strong>Energy Distribution:</strong>
+          {''.join(f'<div class="stats-metric"><span>{energy.title()}:</span><span>{count}</span></div>' for energy, count in day_vs_night['day']['energy_dist'].items())}
         </div>
       </div>
-      """ for item in schedule.get('schedule', []))}
-      ''' if schedule.get('schedule') else '<div class="empty">No schedule available. Run morning ritual to generate.</div>'}
-    </div>
-  </div>
-</div>
-
-<div class="section">
-  <h2>🎨 Preset Browser</h2>
-  <div id="preset-browser">
-    {''.join(f'''
-    <div class="preset-item">
-      <div class="preset-header">
-        <div>
-          <div class="preset-name">{preset.get("emoji", "⚙️")} {preset.get("name", "Unnamed")}</div>
+      <div class="stats-column night">
+        <h3>🌙 Night Work ({day_vs_night['night']['count']} sessions)</h3>
+        <div class="stats-metric"><span>Avg Energy:</span><span>{day_vs_night['night']['avg_energy']:.1f}/3</span></div>
+        <div class="stats-metric"><span>Avg Vibe:</span><span>{day_vs_night['night']['avg_vibe']:.1f}/3</span></div>
+        <div style="margin-top: 1rem;">
+          <strong>Energy Distribution:</strong>
+          {''.join(f'<div class="stats-metric"><span>{energy.title()}:</span><span>{count}</span></div>' for energy, count in day_vs_night['night']['energy_dist'].items())}
         </div>
-        <button class="apply-btn" onclick="applyPreset('{preset.get("filename", "")}')">Apply</button>
       </div>
-      <div class="preset-weights">Mood weights: {", ".join([f"{k}={v}" for k, v in preset.get("mood_weights", {}).items()])}</div>
     </div>
-    ''' for preset in presets) if presets else '<div class="empty">No presets found</div>'}
-  </div>
-</div>
-
-<!-- ORIGINAL SECTIONS -->
-
-<div class="grid-2">
-  <div class="section">
-    <h2>📈 Mood History (Last 14 Days)</h2>
-    {''.join(f'<span class="mood-dot" style="background: hsl({hash(m.get("mood_id",""))%360}, 70%, 60%)" title="{m.get("date","")} - {m.get("mood_id","")}"></span>' for m in mood_graph_data) if mood_graph_data else '<div class="empty">No mood history yet</div>'}
-    <div style="margin-top: 1rem; font-size: 0.8rem; color: var(--dim);">
-      {f"Recent pattern: {' → '.join([m.get('mood_id','?')[:4] for m in mood_graph_data[-5:]])}" if len(mood_graph_data) >= 5 else "Building mood patterns..."}
+    <div class="insight-box">
+      <strong>💡 Insights:</strong><br>
+      {day_vs_night['insights']['best_day']}<br>
+      {day_vs_night['insights']['best_night']}
     </div>
   </div>
-
-  <div class="section">
-    <h2>🔥 Current Streaks</h2>
-    {f'''<div class="streak-item"><strong>Activity:</strong> {current_streaks.get('activity_type', ['none'])[0]} × {len(current_streaks.get('activity_type', []))}</div>''' if current_streaks.get('activity_type') else ''}
-    {f'''<div class="streak-item"><strong>Mood:</strong> {current_streaks.get('mood', ['none'])[0]} × {len(current_streaks.get('mood', []))}</div>''' if current_streaks.get('mood') else ''}
-    {'<div class="empty">No active streaks</div>' if not current_streaks.get('activity_type') and not current_streaks.get('mood') else ''}
-  </div>
-</div>
-
-<div class="section">
-  <h2>🎯 Most Common Impulses</h2>
-  <div class="bar-chart">
-    {''.join(f'''<div class="bar-row"><div class="bar-label">{name}</div><div class="bar" style="width: {max(count / max(top_thoughts[0][1], 1) * 100, 2):.0f}%"></div><div class="bar-count">{count}</div></div>''' for name, count in top_thoughts) if top_thoughts else '<div class="empty">No data yet — check back after some impulses fire</div>'}
-  </div>
-</div>
-
-<div class="section">
-  <h2>📝 Recent Activity</h2>
-  {''.join(f"""<div class="history-item"><span class="time">{e.get('timestamp','?')[:16].replace('T',' ')}</span><span class="mood-tag mood-{e.get('mood','day')}">{e.get('mood','?')}</span> <strong>{e.get('thought_id','?')}</strong> <span style="color: var(--{'success' if e.get('vibe') == 'positive' else 'warning' if e.get('vibe') == 'negative' else 'dim'}); font-size: 0.8rem;">[{e.get('energy','?')}/{e.get('vibe','?')}]</span><div class="summary">{e.get('summary','')}</div></div>""" for e in recent) if recent else '<div class="empty">Nothing yet. First night session fires at 03:17 🌙</div>'}
 </div>
 
 <script>
-// Weight editor functionality
-function saveWeight(thoughtId, mood) {{
-  const input = document.querySelector(`input[data-thought-id="${{thoughtId}}"]`);
-  const weight = parseFloat(input.value);
-  
-  if (weight < 0.1 || weight > 3.0) {{
-    alert('Weight must be between 0.1 and 3.0');
-    return;
-  }}
-  
-  fetch('/api/thought-weight', {{
-    method: 'PUT',
-    headers: {{ 'Content-Type': 'application/json' }},
-    body: JSON.stringify({{ thought_id: thoughtId, mood: mood, weight: weight }})
-  }})
-  .then(r => r.json())
-  .then(data => {{
-    if (data.success) {{
-      alert('Weight updated!');
-      location.reload();
-    }} else {{
-      alert('Failed to update: ' + (data.error || 'Unknown error'));
-    }}
-  }})
-  .catch(e => alert('Error: ' + e));
-}}
+let currentJournalIndex = 0;
+const journalDates = {json.dumps(journal_dates)};
 
-// Mood override functionality
-function setMood() {{
-  const select = document.getElementById('mood-select');
-  const moodId = select.value;
-  
-  if (!moodId) {{
-    alert('Please select a mood');
-    return;
-  }}
-  
-  fetch('/api/set-mood', {{
-    method: 'POST',
-    headers: {{ 'Content-Type': 'application/json' }},
-    body: JSON.stringify({{ mood_id: moodId }})
-  }})
-  .then(r => r.json())
-  .then(data => {{
-    if (data.success) {{
-      alert('Mood set!');
-      location.reload();
-    }} else {{
-      alert('Failed to set mood: ' + (data.error || 'Unknown error'));
-    }}
-  }})
-  .catch(e => alert('Error: ' + e));
-}}
-
-// Trigger impulse functionality
-function triggerImpulse() {{
-  const resultDiv = document.getElementById('trigger-result');
-  resultDiv.innerHTML = 'Triggering impulse...';
-  
-  fetch('/api/trigger', {{
-    method: 'POST'
-  }})
-  .then(r => r.json())
-  .then(data => {{
-    if (data.success) {{
-      resultDiv.innerHTML = `<div class="trigger-result">Output:\\n${{data.output}}${{data.error ? '\\n\\nErrors:\\n' + data.error : ''}}</div>`;
-    }} else {{
-      resultDiv.innerHTML = `<div class="trigger-result" style="color: var(--danger);">Error: ${{data.error}}</div>`;
-    }}
-  }})
-  .catch(e => {{
-    resultDiv.innerHTML = `<div class="trigger-result" style="color: var(--danger);">Network error: ${{e}}</div>`;
+function switchTab(tabName) {{
+  // Hide all tab contents
+  document.querySelectorAll('.tab-content').forEach(content => {{
+    content.classList.remove('active');
   }});
+  
+  // Deactivate all tabs
+  document.querySelectorAll('.nav-tab').forEach(tab => {{
+    tab.classList.remove('active');
+  }});
+  
+  // Show selected tab content
+  document.getElementById(tabName).classList.add('active');
+  
+  // Activate selected tab
+  event.target.classList.add('active');
+  
+  // Load journal if switching to journal tab
+  if (tabName === 'journal' && journalDates.length > 0) {{
+    loadJournalEntry();
+  }}
 }}
 
-// Preset application
-function applyPreset(filename) {{
-  if (!confirm('Apply this preset? This will override current mood weights.')) {{
-    return;
-  }}
+function loadJournalEntry() {{
+  if (journalDates.length === 0) return;
   
-  fetch('/api/preset-apply', {{
-    method: 'POST',
-    headers: {{ 'Content-Type': 'application/json' }},
-    body: JSON.stringify({{ filename: filename }})
-  }})
-  .then(r => r.json())
-  .then(data => {{
-    if (data.success) {{
-      alert('Preset applied!');
-      location.reload();
-    }} else {{
-      alert('Failed to apply preset: ' + (data.error || 'Unknown error'));
-    }}
-  }})
-  .catch(e => alert('Error: ' + e));
+  const date = journalDates[currentJournalIndex];
+  const viewer = document.getElementById('journal-viewer');
+  viewer.innerHTML = '<div class="loading">Loading journal entry...</div>';
+  
+  fetch(`/api/journal?date=${{date}}`)
+    .then(r => r.json())
+    .then(data => {{
+      if (data.error) {{
+        viewer.innerHTML = '<div class="empty">Failed to load journal entry</div>';
+        return;
+      }}
+      
+      const moodContext = data.mood_context || {{}};
+      let contextHtml = '';
+      if (moodContext.emoji) {{
+        contextHtml = `<div class="mood-context">${{moodContext.emoji}} ${{moodContext.name}}`;
+        if (moodContext.description) {{
+          contextHtml += ` — ${{moodContext.description}}`;
+        }}
+        if (moodContext.weather) {{
+          contextHtml += ` | Weather: ${{moodContext.weather}}`;
+        }}
+        if (moodContext.news_vibe) {{
+          contextHtml += ` | News: ${{moodContext.news_vibe}}`;
+        }}
+        contextHtml += '</div>';
+      }}
+      
+      viewer.innerHTML = `
+        <div class="journal-entry">
+          <div class="journal-date">${{data.date}} ${{contextHtml}}</div>
+          <div class="journal-content">${{data.html_content}}</div>
+        </div>
+      `;
+      
+      updateJournalNavButtons();
+    }})
+    .catch(() => {{
+      viewer.innerHTML = '<div class="empty">Failed to load journal entry</div>';
+    }});
+}}
+
+function prevJournalDate() {{
+  if (currentJournalIndex < journalDates.length - 1) {{
+    currentJournalIndex++;
+    loadJournalEntry();
+  }}
+}}
+
+function nextJournalDate() {{
+  if (currentJournalIndex > 0) {{
+    currentJournalIndex--;
+    loadJournalEntry();
+  }}
+}}
+
+function updateJournalNavButtons() {{
+  const prevBtn = document.getElementById('prevBtn');
+  const nextBtn = document.getElementById('nextBtn');
+  
+  if (prevBtn) prevBtn.disabled = currentJournalIndex >= journalDates.length - 1;
+  if (nextBtn) nextBtn.disabled = currentJournalIndex <= 0;
+}}
+
+// Initialize journal if dates exist
+if (journalDates.length > 0) {{
+  updateJournalNavButtons();
 }}
 </script>
 
@@ -583,50 +649,79 @@ function applyPreset(filename) {{
 </html>"""
 
 
-def load_v1_systems():
-    """Load data from all v1.0 systems for dashboard display."""
-    systems = {}
-    try:
-        from health_monitor import get_dashboard_data
-        systems["health"] = get_dashboard_data()
-    except Exception:
-        systems["health"] = None
-    try:
-        from memory_system import MemorySystem
-        ms = MemorySystem()
-        systems["memory"] = ms.get_stats()
-    except Exception:
-        systems["memory"] = None
-    try:
-        from trust_system import TrustSystem
-        ts = TrustSystem()
-        systems["trust"] = ts.get_stats()
-    except Exception:
-        systems["trust"] = None
-    try:
-        from proactive import ProactiveAgent
-        pa = ProactiveAgent()
-        systems["proactive"] = pa.wal_stats()
-    except Exception:
-        systems["proactive"] = None
-    try:
-        from self_evolution import SelfEvolutionSystem
-        se = SelfEvolutionSystem()
-        systems["evolution"] = se.get_stats()
-    except Exception:
-        systems["evolution"] = None
-    return systems
-
-
 class DashboardHandler(SimpleHTTPRequestHandler):
     def do_GET(self):
-        if self.path == "/" or self.path == "/index.html":
+        parsed_url = urlparse(self.path)
+        path = parsed_url.path
+        query_params = parse_qs(parsed_url.query)
+        
+        if path == "/" or path == "/index.html":
             html = build_html()
             self.send_response(200)
             self.send_header("Content-Type", "text/html; charset=utf-8")
             self.end_headers()
             self.wfile.write(html.encode())
-        elif self.path == "/api/stats":
+            
+        elif path == "/api/journal":
+            date = query_params.get('date', [''])[0]
+            if date:
+                entry = get_journal_entry(date)
+                if entry:
+                    self.send_response(200)
+                    self.send_header("Content-Type", "application/json")
+                    self.end_headers()
+                    self.wfile.write(json.dumps(entry).encode())
+                else:
+                    self.send_response(404)
+                    self.send_header("Content-Type", "application/json")
+                    self.end_headers()
+                    self.wfile.write(json.dumps({"error": "Journal entry not found"}).encode())
+            else:
+                self.send_response(400)
+                self.send_header("Content-Type", "application/json")
+                self.end_headers()
+                self.wfile.write(json.dumps({"error": "Date parameter required"}).encode())
+                
+        elif path == "/api/journal/list":
+            dates = get_journal_dates()
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.end_headers()
+            self.wfile.write(json.dumps({"dates": dates}).encode())
+            
+        elif path == "/api/achievements":
+            all_achievements = load_all_achievements()
+            earned_achievements = load_earned_achievements()
+            earned_ids = set(a.get("id") for a in earned_achievements.get("earned", []))
+            
+            # Build response with earned status
+            achievements_with_status = {}
+            for aid, achievement in all_achievements.get("achievements", {}).items():
+                achievements_with_status[aid] = {
+                    **achievement,
+                    "is_earned": aid in earned_ids
+                }
+            
+            response = {
+                "achievements": achievements_with_status,
+                "tiers": all_achievements.get("tiers", {}),
+                "earned": earned_achievements.get("earned", []),
+                "total_points": earned_achievements.get("total_points", 0)
+            }
+            
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.end_headers()
+            self.wfile.write(json.dumps(response).encode())
+            
+        elif path == "/api/night-stats":
+            stats = get_day_vs_night_stats()
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.end_headers()
+            self.wfile.write(json.dumps(stats).encode())
+            
+        elif path == "/api/stats":
             history = load_history()
             picks = load_picks()
             thought_counts = Counter(p.get("thought", "?") for p in picks)
@@ -639,12 +734,8 @@ class DashboardHandler(SimpleHTTPRequestHandler):
                 "thought_counts": dict(thought_counts),
                 "recent": history[-10:][::-1],
             }).encode())
-        elif self.path == "/api/systems":
-            self.send_response(200)
-            self.send_header("Content-Type", "application/json")
-            self.end_headers()
-            self.wfile.write(json.dumps(load_v1_systems(), default=str).encode())
-        elif self.path == "/api/health":
+            
+        elif path == "/api/health":
             try:
                 from health_monitor import get_dashboard_data
                 data = get_dashboard_data()
@@ -654,183 +745,7 @@ class DashboardHandler(SimpleHTTPRequestHandler):
             self.send_header("Content-Type", "application/json")
             self.end_headers()
             self.wfile.write(json.dumps(data, default=str).encode())
-        elif self.path == "/api/presets":
-            # GET /api/presets — returns all preset files
-            presets = load_presets()
-            self.send_response(200)
-            self.send_header("Content-Type", "application/json")
-            self.end_headers()
-            self.wfile.write(json.dumps(presets).encode())
-        elif self.path == "/api/schedule":
-            # GET /api/schedule — returns today_schedule.json
-            schedule = load_today_schedule()
-            self.send_response(200)
-            self.send_header("Content-Type", "application/json")
-            self.end_headers()
-            self.wfile.write(json.dumps(schedule).encode())
-        else:
-            self.send_response(404)
-            self.end_headers()
-
-    def do_PUT(self):
-        if self.path == "/api/thought-weight":
-            # PUT /api/thought-weight — accepts {thought_id, mood, weight}, updates thoughts.json
-            content_length = int(self.headers['Content-Length'])
-            post_data = self.rfile.read(content_length)
             
-            try:
-                data = json.loads(post_data.decode('utf-8'))
-                thought_id = data.get('thought_id')
-                mood = data.get('mood')
-                weight = float(data.get('weight'))
-                
-                if not thought_id or not mood or weight < 0.1 or weight > 3.0:
-                    raise ValueError("Invalid parameters")
-                
-                # Load current thoughts
-                thoughts = load_thoughts()
-                
-                # Find and update the thought
-                updated = False
-                for mood_data in thoughts.get("moods", {}).values():
-                    for thought in mood_data.get("thoughts", []):
-                        if thought["id"] == thought_id:
-                            thought["weight"] = weight
-                            updated = True
-                            break
-                    if updated:
-                        break
-                
-                if updated:
-                    save_thoughts(thoughts)
-                    self.send_response(200)
-                    self.send_header("Content-Type", "application/json")
-                    self.end_headers()
-                    self.wfile.write(json.dumps({"success": True}).encode())
-                else:
-                    self.send_response(404)
-                    self.send_header("Content-Type", "application/json")
-                    self.end_headers()
-                    self.wfile.write(json.dumps({"success": False, "error": "Thought not found"}).encode())
-            
-            except Exception as e:
-                self.send_response(400)
-                self.send_header("Content-Type", "application/json")
-                self.end_headers()
-                self.wfile.write(json.dumps({"success": False, "error": str(e)}).encode())
-        else:
-            self.send_response(404)
-            self.end_headers()
-
-    def do_POST(self):
-        if self.path == "/api/set-mood":
-            # POST /api/set-mood — accepts {mood_id}, updates today_mood.json
-            content_length = int(self.headers['Content-Length'])
-            post_data = self.rfile.read(content_length)
-            
-            try:
-                data = json.loads(post_data.decode('utf-8'))
-                mood_id = data.get('mood_id')
-                
-                if not mood_id:
-                    raise ValueError("Missing mood_id")
-                
-                # Load moods data to get mood info
-                moods_data = load_moods()
-                mood_info = None
-                for mood in moods_data.get("base_moods", []):
-                    if mood["id"] == mood_id:
-                        mood_info = mood
-                        break
-                
-                if not mood_info:
-                    raise ValueError("Invalid mood_id")
-                
-                # Create new today_mood data
-                today_mood = {
-                    "id": mood_id,
-                    "name": mood_info["name"],
-                    "emoji": mood_info["emoji"],
-                    "description": f"Manually set to {mood_info['name']}",
-                    "date": datetime.now().strftime("%Y-%m-%d"),
-                    "weather": "manual override",
-                    "news_vibes": ["Manual mood override"],
-                    "boosted_traits": mood_info.get("traits", []),
-                    "dampened_traits": [],
-                    "activity_log": [],
-                    "energy_score": 1,
-                    "vibe_score": 1,
-                    "last_drift": datetime.now().isoformat()
-                }
-                
-                save_today_mood(today_mood)
-                
-                self.send_response(200)
-                self.send_header("Content-Type", "application/json")
-                self.end_headers()
-                self.wfile.write(json.dumps({"success": True}).encode())
-            
-            except Exception as e:
-                self.send_response(400)
-                self.send_header("Content-Type", "application/json")
-                self.end_headers()
-                self.wfile.write(json.dumps({"success": False, "error": str(e)}).encode())
-
-        elif self.path == "/api/trigger":
-            # POST /api/trigger — runs intrusive.sh day and returns result
-            try:
-                result = trigger_impulse()
-                
-                self.send_response(200)
-                self.send_header("Content-Type", "application/json")
-                self.end_headers()
-                self.wfile.write(json.dumps(result).encode())
-            
-            except Exception as e:
-                self.send_response(500)
-                self.send_header("Content-Type", "application/json")
-                self.end_headers()
-                self.wfile.write(json.dumps({"success": False, "error": str(e)}).encode())
-
-        elif self.path == "/api/preset-apply":
-            # POST /api/preset-apply — accepts {filename}, applies preset
-            content_length = int(self.headers['Content-Length'])
-            post_data = self.rfile.read(content_length)
-            
-            try:
-                data = json.loads(post_data.decode('utf-8'))
-                filename = data.get('filename')
-                
-                if not filename:
-                    raise ValueError("Missing filename")
-                
-                # Load preset
-                preset_path = Path(__file__).parent / "presets" / filename
-                if not preset_path.exists():
-                    raise ValueError("Preset not found")
-                
-                preset = json.loads(preset_path.read_text())
-                
-                # Apply preset mood weights to moods.json
-                moods_data = load_moods()
-                if "mood_weights" in preset:
-                    for mood in moods_data.get("base_moods", []):
-                        if mood["id"] in preset["mood_weights"]:
-                            mood["weight"] = preset["mood_weights"][mood["id"]]
-                
-                # Save updated moods
-                MOODS_FILE.write_text(json.dumps(moods_data, indent=2))
-                
-                self.send_response(200)
-                self.send_header("Content-Type", "application/json")
-                self.end_headers()
-                self.wfile.write(json.dumps({"success": True}).encode())
-            
-            except Exception as e:
-                self.send_response(400)
-                self.send_header("Content-Type", "application/json")
-                self.end_headers()
-                self.wfile.write(json.dumps({"success": False, "error": str(e)}).encode())
         else:
             self.send_response(404)
             self.end_headers()
