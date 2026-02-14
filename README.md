@@ -52,7 +52,7 @@ Moods are influenced by **weather**, **news headlines**, and **activity outcomes
 - **🧠 Multi-Store Memory** — episodic, semantic, procedural memory with decay & consolidation
 - **🚀 Proactive Agent Protocol** — Write-Ahead Log (WAL) + Working Buffer for context management
 - **🔒 Trust & Escalation** — learns when to ask vs act autonomously, grows trust over time
-- **🧬 Self-Evolution** — auto-adjusts behavior based on outcome patterns
+- **🧬 Self-Evolution** — observes its own behavior patterns and auto-adjusts weights & strategies
 - **🚦 Health Monitor** — traffic light status, heartbeat tracking, incident logging
 - **🧠 Mood Memory** — tracks patterns across days/weeks/seasons
 - **🔄 Streak Detection** — anti-rut system, forces variety after repetition
