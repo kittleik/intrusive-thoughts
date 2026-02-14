@@ -141,23 +141,28 @@ intrusive-thoughts/
 ├── analyze.py              # 📊 Productivity correlation analysis
 ├── check_achievements.py   # 🏆 Achievement checker
 ├── dashboard.py            # 📈 Web dashboard (port 3117)
-├── memory_system.py        # 🧠 Advanced multi-store memory system
-├── memory_cli.sh           # 🧠 Memory system CLI interface
+├── memory_system.py        # 🧠 Multi-store memory (episodic/semantic/procedural)
+├── memory_cli.sh           # 🧠 Memory system CLI
+├── proactive.py            # 🚀 WAL + Working Buffer + suggestions
+├── proactive_cli.sh        # 🚀 Proactive system CLI
 ├── trust_system.py         # 🔒 Trust & escalation system
-├── trust_cli.sh            # 🔒 Trust system CLI interface
+├── trust_cli.sh            # 🔒 Trust system CLI
+├── self_evolution.py       # 🧬 Self-evolving learning system
+├── evolve_cli.sh           # 🧬 Evolution system CLI
+├── health_monitor.py       # 🚦 Health & status monitor
+├── health_cli.sh           # 🚦 Health monitor CLI
+├── setup.sh                # 📦 One-command installation wizard
 ├── stats.sh                # 📊 CLI stats overview
-├── install.sh              # 🚀 Automated installer
+├── install.sh              # 🚀 OpenClaw skill installer
 │
-├── history.json            # Runtime: activity history
-├── mood_history.json       # Runtime: mood patterns
-├── streaks.json            # Runtime: streak tracking
-├── achievements_earned.json # Runtime: earned badges
-├── today_mood.json         # Runtime: current mood (generated daily)
-├── today_schedule.json     # Runtime: today's pop-in times
-├── human_mood.json         # Runtime: detected human mood
+├── memory_store/           # Runtime: multi-store memory data
+├── wal/                    # Runtime: write-ahead log
+├── buffer/                 # Runtime: working buffer
+├── health/                 # Runtime: health & incident data
+├── evolution/              # Runtime: self-evolution learnings
+├── trust_store/            # Runtime: trust system data
 ├── log/                    # Runtime: pick logs
-├── journal/                # Runtime: night journal entries
-└── trust_store/            # Runtime: trust system data
+└── journal/                # Runtime: night journal entries
 ```
 
 ## Trust & Escalation System
