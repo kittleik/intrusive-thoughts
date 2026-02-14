@@ -5,26 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.1.3] - Unreleased
+## [0.1.3] - 2026-02-14
 
 ### Added
-- Dashboard v2 with improved UI and performance
-- Self-awareness capabilities and introspection features
-- TypeScript rewrite for better maintainability
-- Comprehensive test suite with pytest
-- Version management system with `--version` flag
-- Context survival system with export/import state functionality
-- Decision trace reconstruction and analysis tools
-- `intrusive.sh export-state` command for state backup
-- `intrusive.sh import-state` command for state restoration
+- **Dashboard v2**: Live thought stream, mood visualization, drift graph, tuning controls, health/memory explorer, journal viewer, achievements panel, self-awareness panel with sticky nav
+- **TypeScript dashboard rewrite**: Express server with typed services, static HTML frontend (`dashboard/`)
+- **Self-awareness**: `intrusive.sh explain/introspect/why` commands, `docs/ARCHITECTURE.md`
+- **Context survival**: `intrusive.sh export-state` / `import-state` for compaction survival
+- **Version management**: `intrusive.sh --version`, VERSION file as source of truth
+- **Decision trace**: Reconstruction and analysis tools with `/api/why` endpoint
+- **Community contributions**: `create-preset` and `suggest-thought` commands for non-coders, `.github/ISSUE_TEMPLATE/new-preset.md`
+- **Flavor text**: Mood-specific flavor for all 8 moods, Easter egg thoughts (Friday 13th, full moon, birthdays, streak interventions), funnier achievements
+- **Test suite**: 100 tests covering mood drift, thought selection, memory decay, trust score, decision trace
+- **AGENTS.md**: Git workflow documentation for parallel sub-agent development
 
 ### Changed
-- Dashboard footer now dynamically reads version from VERSION file
+- Dashboard footer dynamically reads version from VERSION file
 - Improved decision logging with detailed trace information
 - Enhanced error handling and graceful fallbacks
 
 ### Fixed
-- Various stability improvements and bug fixes
+- Removed accidentally committed `node_modules/` from git tracking
 
 ## [0.1.2] - 2024-02-10
 
