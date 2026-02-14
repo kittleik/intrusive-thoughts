@@ -1,9 +1,28 @@
 #!/bin/bash
 # 🧠 Intrusive Thoughts — Random prompt picker (mood-aware)
-# Usage: intrusive.sh <mood>  (night|day)
+# Usage: intrusive.sh <mood>    (night|day)
+#        intrusive.sh wizard     (run setup wizard)
 # Reads today_mood.json to bias thought selection toward current mood
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+
+# Handle subcommands
+case "${1:-}" in
+    wizard)
+        exec "$SCRIPT_DIR/wizard.sh"
+        ;;
+    help|--help|-h)
+        echo "🧠 Intrusive Thoughts"
+        echo ""
+        echo "Usage:"
+        echo "  intrusive.sh [mood]     Pick a random thought (day|night)"
+        echo "  intrusive.sh wizard     Run the interactive setup wizard"
+        echo "  intrusive.sh help       Show this help"
+        echo ""
+        exit 0
+        ;;
+esac
+
 source "$SCRIPT_DIR/load_config.sh"
 
 THOUGHTS_FILE="$DATA_DIR/thoughts.json"
