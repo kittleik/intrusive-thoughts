@@ -4,9 +4,11 @@
 # Reads today_mood.json to bias thought selection toward current mood
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-THOUGHTS_FILE="$SCRIPT_DIR/thoughts.json"
-MOOD_FILE="$SCRIPT_DIR/today_mood.json"
-LOG_DIR="$SCRIPT_DIR/log"
+source "$SCRIPT_DIR/load_config.sh"
+
+THOUGHTS_FILE="$DATA_DIR/thoughts.json"
+MOOD_FILE="$DATA_DIR/today_mood.json"
+LOG_DIR="$DATA_DIR/log"
 mkdir -p "$LOG_DIR"
 
 MOOD="${1:-day}"
@@ -34,7 +36,7 @@ except:
 # Load streak weights (anti-rut system)
 streak_weights = {}
 try:
-    with open('$SCRIPT_DIR/streaks.json') as f:
+    with open('$DATA_DIR/streaks.json') as f:
         streaks = json.load(f)
         streak_weights = streaks.get('anti_rut_weights', {})
 except:
@@ -43,7 +45,7 @@ except:
 # Load human mood for supportive adjustments
 human_mood = None
 try:
-    with open('$SCRIPT_DIR/human_mood.json') as f:
+    with open('$DATA_DIR/human_mood.json') as f:
         human_data = json.load(f)
         human_mood = human_data.get('current')
 except:

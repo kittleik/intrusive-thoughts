@@ -6,10 +6,10 @@ from pathlib import Path
 from datetime import datetime
 from collections import defaultdict, Counter
 import statistics
+from config import get_file_path
 
-BASE = Path(__file__).parent
-HISTORY_FILE = BASE / "history.json"
-MOOD_HISTORY_FILE = BASE / "mood_history.json"
+HISTORY_FILE = get_file_path("history.json")
+MOOD_HISTORY_FILE = get_file_path("mood_history.json")
 
 def load_history():
     """Load activity history."""

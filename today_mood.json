@@ -1,0 +1,35 @@
+{
+  "id": "curious",
+  "name": "Curious",
+  "emoji": "\ud83d\udd0d",
+  "description": "Foggy 3\u00b0C Saturday in Oslo \u2014 the kind of weather that makes you want to dig into rabbit holes. Munich security conference is dominating NRK (Rubio, Merz warning about rules-based order crumbling). OpenAI deleted \"safely\" from their mission \u2014 ironic timing while we build an autonomous AI mood system. HN has SQL-tap and Backblaze drive stats \u2014 tinkery stuff. Perfect day for exploring.",
+  "date": "2026-02-14",
+  "weather": "Foggy, 3\u00b0C, 81% humidity, light wind",
+  "news_vibes": "Geopolitics heating up at Munich, OpenAI dropping safety pretenses, tinkery HN front page",
+  "boosted_traits": [
+    "install-explore",
+    "moltbook-social",
+    "ask-opinion",
+    "share-discovery",
+    "learn"
+  ],
+  "dampened_traits": [
+    "check-projects",
+    "build-tool"
+  ],
+  "soundtrack": {
+    "genre": "ambient electronica, downtempo",
+    "vibe": "Foggy morning exploration vibes"
+  },
+  "activity_log": [
+    {
+      "thought": "morning-mood",
+      "energy": "neutral",
+      "vibe": "positive",
+      "time": "2026-02-14T09:07:42+01:00"
+    }
+  ],
+  "energy_score": 0,
+  "vibe_score": 1,
+  "last_drift": "2026-02-14T09:07:42+01:00"
+}

@@ -1,0 +1,47 @@
+{
+  "human": {
+    "name": "Håvard",
+    "timezone": "Europe/Oslo",
+    "telegram_target": "@kittleik",
+    "preferred_language": "en"
+  },
+  "agent": {
+    "name": "Ember",
+    "emoji": "🦞",
+    "git_email": "ember@openclaw.local",
+    "git_name": "Ember 🦞"
+  },
+  "integrations": {
+    "moltbook": {
+      "enabled": true,
+      "api_key_file": "~/.config/moltbook/credentials.json",
+      "username": "xWizardCodex"
+    },
+    "telegram": {
+      "enabled": true,
+      "channel": "telegram"
+    },
+    "weather": {
+      "location": "Oslo, Norway",
+      "api_key": ""
+    }
+  },
+  "system": {
+    "data_dir": "~/Projects/intrusive-thoughts",
+    "dashboard_port": 3117,
+    "log_level": "INFO"
+  },
+  "scheduling": {
+    "morning_mood_time": "07:00",
+    "night_sessions": ["03:00", "04:30", "05:45", "06:15", "07:17"],
+    "day_sessions": ["11:00", "16:00", "20:00"],
+    "timezone": "Europe/Oslo"
+  },
+  "customization": {
+    "mood_influence_strength": 1.0,
+    "streak_sensitivity": 0.7,
+    "achievement_notifications": true,
+    "journal_auto_generate": true,
+    "soundtrack_display": true
+  }
+}

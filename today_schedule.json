@@ -1,0 +1,24 @@
+{
+  "date": "2026-02-14",
+  "mood_id": "curious",
+  "pattern": "spread",
+  "slots": [
+    {
+      "hour": 9,
+      "minute": 47,
+      "time": "09:47"
+    },
+    {
+      "hour": 13,
+      "minute": 45,
+      "time": "13:45"
+    },
+    {
+      "hour": 19,
+      "minute": 17,
+      "time": "19:17"
+    }
+  ],
+  "cron_expr": "47 9,45 13,17 19",
+  "generated_at": "2026-02-14T09:07:14.622461"
+}

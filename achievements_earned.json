@@ -1,5 +1,16 @@
 {
   "version": 1,
-  "earned": [],
-  "total_points": 0
+  "earned": [
+    {
+      "id": "night_owl",
+      "earned_at": "2026-02-14T09:07:42.316058",
+      "trigger_activity": "morning-mood",
+      "trigger_time": "2026-02-14T09:07:42+01:00",
+      "name": "Night Owl \ud83e\udd89",
+      "description": "First activity logged at 3am or later",
+      "tier": "bronze",
+      "points": 10
+    }
+  ],
+  "total_points": 10
 }

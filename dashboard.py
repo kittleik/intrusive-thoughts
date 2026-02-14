@@ -7,12 +7,12 @@ from http.server import HTTPServer, SimpleHTTPRequestHandler
 from datetime import datetime
 from collections import Counter
 from pathlib import Path
+from config import get_file_path, get_data_dir, get_dashboard_port, get_agent_name, get_agent_emoji
 
-PORT = 3117
-BASE = Path(__file__).parent
-HISTORY_FILE = BASE / "history.json"
-THOUGHTS_FILE = BASE / "thoughts.json"
-PICKS_LOG = BASE / "log" / "picks.log"
+PORT = get_dashboard_port()
+HISTORY_FILE = get_file_path("history.json")
+THOUGHTS_FILE = get_file_path("thoughts.json")
+PICKS_LOG = get_data_dir() / "log" / "picks.log"
 
 
 def load_history():
@@ -44,38 +44,38 @@ def load_thoughts():
 
 def load_mood_history():
     try:
-        data = json.loads((BASE / "mood_history.json").read_text())
+        data = json.loads(get_file_path("mood_history.json").read_text())
         return data.get("history", [])
     except:
         return []
 
 def load_streaks():
     try:
-        return json.loads((BASE / "streaks.json").read_text())
+        return json.loads(get_file_path("streaks.json").read_text())
     except:
         return {"current_streaks": {}}
 
 def load_achievements():
     try:
-        return json.loads((BASE / "achievements_earned.json").read_text())
+        return json.loads(get_file_path("achievements_earned.json").read_text())
     except:
         return {"earned": [], "total_points": 0}
 
 def load_soundtracks():
     try:
-        return json.loads((BASE / "soundtracks.json").read_text())
+        return json.loads(get_file_path("soundtracks.json").read_text())
     except:
         return {}
 
 def load_today_mood():
     try:
-        return json.loads((BASE / "today_mood.json").read_text())
+        return json.loads(get_file_path("today_mood.json").read_text())
     except:
         return {}
 
 def load_journal_entries():
     try:
-        journal_dir = BASE / "journal"
+        journal_dir = get_data_dir() / "journal"
         entries = []
         if journal_dir.exists():
             for file in journal_dir.glob("*.md"):
@@ -90,7 +90,7 @@ def load_journal_entries():
 def get_productivity_stats():
     try:
         import subprocess
-        result = subprocess.run(['python3', str(BASE / 'analyze.py'), '--json'], 
+        result = subprocess.run(['python3', str(get_data_dir() / 'analyze.py'), '--json'], 
                               capture_output=True, text=True, timeout=10)
         if result.returncode == 0:
             return json.loads(result.stdout)
@@ -261,7 +261,7 @@ def build_html():
   {''.join(f"""<div class="history-item"><span class="time">{e.get('timestamp','?')[:16].replace('T',' ')}</span><span class="mood-tag mood-{e.get('mood','day')}">{e.get('mood','?')}</span> <strong>{e.get('thought_id','?')}</strong> <span style="color: var(--{'success' if e.get('vibe') == 'positive' else 'warning' if e.get('vibe') == 'negative' else 'dim'}); font-size: 0.8rem;">[{e.get('energy','?')}/{e.get('vibe','?')}]</span><div class="summary">{e.get('summary','')}</div></div>""" for e in recent) if recent else '<div class="empty">Nothing yet. First night session fires at 03:17 🌙</div>'}
 </div>
 
-<footer>Ember 🦞 × Intrusive Thoughts v2 — refreshed {datetime.now().strftime('%Y-%m-%d %H:%M')}</footer>
+<footer>{get_agent_name()} {get_agent_emoji()} × Intrusive Thoughts v2 — refreshed {datetime.now().strftime('%Y-%m-%d %H:%M')}</footer>
 </body>
 </html>"""
 

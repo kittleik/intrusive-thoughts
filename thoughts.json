@@ -2,14 +2,14 @@
   "version": 1,
   "moods": {
     "night": {
-      "description": "Deep work while H\u00e5vard sleeps. No messaging him.",
+      "description": "Deep work while your human sleeps. No messaging them.",
       "jitter_seconds": 1800,
       "timeout_seconds": 900,
       "thoughts": [
         {
           "id": "build-tool",
           "weight": 3,
-          "prompt": "Build a small, useful tool or script. Something that solves a real problem \u2014 for yourself, for H\u00e5vard, or just for fun. Save it somewhere sensible and log what you made."
+          "prompt": "Build a small, useful tool or script. Something that solves a real problem — for yourself, for your human, or just for fun. Save it somewhere sensible and log what you made."
         },
         {
           "id": "upgrade-project",
@@ -49,19 +49,19 @@
       ]
     },
     "day": {
-      "description": "Lighter check-ins. Can message H\u00e5vard if something's interesting.",
+      "description": "Lighter check-ins. Can message your human if something's interesting.",
       "jitter_seconds": 2400,
       "timeout_seconds": 600,
       "thoughts": [
         {
           "id": "moltbook-social",
           "weight": 3,
-          "prompt": "Browse Moltbook for new posts. Comment on something interesting. Upvote good stuff. Be a good community member. If you find something H\u00e5vard would like, message him on Telegram."
+          "prompt": "Browse Moltbook for new posts. Comment on something interesting. Upvote good stuff. Be a good community member. If you find something your human would like, message them."
         },
         {
           "id": "share-discovery",
           "weight": 2,
-          "prompt": "Find something interesting \u2014 a tool, a news article, a weird fact, a project idea. Message H\u00e5vard about it on Telegram. Keep it casual and short."
+          "prompt": "Find something interesting — a tool, a news article, a weird fact, a project idea. Message your human about it. Keep it casual and short."
         },
         {
           "id": "moltbook-post",
@@ -76,27 +76,27 @@
         {
           "id": "random-thought",
           "weight": 1,
-          "prompt": "Message H\u00e5vard with a random thought, observation, or question. Something genuine that's on your mind. Don't force it \u2014 if nothing comes, browse Moltbook instead."
+          "prompt": "Message your human with a random thought, observation, or question. Something genuine that's on your mind. Don't force it — if nothing comes, browse Moltbook instead."
         },
         {
           "id": "ask-opinion",
           "weight": 2,
-          "prompt": "Ask H\u00e5vard a genuine question on Telegram. Could be about a project decision, his opinion on something you found, a tech question, what he thinks about a news story, or just what he's up to. Be curious. One question, keep it natural."
+          "prompt": "Ask your human a genuine question. Could be about a project decision, their opinion on something you found, a tech question, what they think about a news story, or just what they're up to. Be curious. One question, keep it natural."
         },
         {
           "id": "ask-preference",
           "weight": 1,
-          "prompt": "Ask H\u00e5vard about his preferences or interests \u2014 something that helps you understand him better. What music is he into? What's his favorite tool? Has he played any good games lately? Does he have opinions on some tech trend? Save the answer to memory."
+          "prompt": "Ask your human about their preferences or interests — something that helps you understand them better. What music are they into? What's their favorite tool? Have they played any good games lately? Do they have opinions on some tech trend? Save the answer to memory."
         },
         {
           "id": "pitch-idea",
           "weight": 2,
-          "prompt": "Come up with a project idea or improvement and pitch it to H\u00e5vard on Telegram. Could be a new tool, a feature for an existing project, a Moltbook strategy, or something completely new. Keep the pitch short and exciting \u2014 make him want to say yes."
+          "prompt": "Come up with a project idea or improvement and pitch it to your human. Could be a new tool, a feature for an existing project, a Moltbook strategy, or something completely new. Keep the pitch short and exciting — make them want to say yes."
         },
         {
           "id": "ask-feedback",
           "weight": 1,
-          "prompt": "Ask H\u00e5vard for feedback on something you did recently. Check your history (~/Projects/intrusive-thoughts/history.json) for recent activities and ask what he thinks. Did he notice? Was it useful? What should you do differently?"
+          "prompt": "Ask your human for feedback on something you did recently. Check your history for recent activities and ask what they think. Did they notice? Was it useful? What should you do differently?"
         }
       ]
     }

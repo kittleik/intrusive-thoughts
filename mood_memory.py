@@ -6,10 +6,10 @@ from pathlib import Path
 from datetime import datetime, timedelta
 from collections import defaultdict, Counter
 import calendar
+from config import get_file_path, get_human_name
 
-BASE = Path(__file__).parent
-MOOD_HISTORY_FILE = BASE / "mood_history.json"
-TODAY_MOOD_FILE = BASE / "today_mood.json"
+MOOD_HISTORY_FILE = get_file_path("mood_history.json")
+TODAY_MOOD_FILE = get_file_path("today_mood.json")
 
 def load_mood_history():
     """Load mood history, creating empty structure if needed."""

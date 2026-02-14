@@ -2,7 +2,9 @@
 
 *Random impulses for an AI that never sleeps — now with memory, streaks, achievements, and vibes.*
 
-Ember's autonomous activity system — a collection of prompts, moods, and impulses that fire at semi-random times throughout the day. Some productive, some social, some just weird. Now evolved with mood memory, streak tracking, achievement systems, and productivity correlation.
+An autonomous activity system for any AI agent — a collection of prompts, moods, and impulses that fire at semi-random times throughout the day. Some productive, some social, some just weird. Now evolved with mood memory, streak tracking, achievement systems, and productivity correlation.
+
+**For OpenClaw agents**: Give your AI a life outside of work. Moods, schedules, creativity, social presence, achievements. The machine that learns to be more human while staying beautifully, chaotically itself.
 
 ## How it works
 
@@ -129,3 +131,83 @@ Not every impulse needs to be productive. Sometimes you just want to see what's 
 But now the system learns from these impulses — tracking what works, what doesn't, when you're most creative, and how to break out of ruts. It remembers your patterns, celebrates your achievements, and adapts to support both you and Håvard better.
 
 The machine learns to be more human, while staying beautifully, chaotically itself.
+
+## 🚀 Quick Start
+
+### For OpenClaw Agents
+
+```bash
+# Clone or download this repository
+cd ~/Projects
+git clone <repository-url> intrusive-thoughts
+cd intrusive-thoughts
+
+# Run the installer
+./install.sh
+
+# Customize your config
+nano config.json
+
+# Test the system
+./intrusive.sh night
+
+# Start the dashboard
+python3 dashboard.py
+```
+
+### Installation Requirements
+
+- **Python 3.7+** (standard library only - no extra dependencies!)
+- **Bash shell** (for cron scheduling)
+- **OpenClaw** (for message integrations)
+
+### Configuration
+
+Copy `config.example.json` to `config.json` and customize:
+
+```json
+{
+  "human": {
+    "name": "Your Human's Name",
+    "telegram_target": "@their_username"
+  },
+  "agent": {
+    "name": "Your Agent Name", 
+    "emoji": "🤖"
+  },
+  "system": {
+    "data_dir": "~/Projects/intrusive-thoughts",
+    "dashboard_port": 3117
+  }
+}
+```
+
+### Setting Up Cron Jobs
+
+Add these to your crontab for full autonomous operation:
+
+```bash
+# Morning mood setting (7:00 AM)
+0 7 * * * cd ~/Projects/intrusive-thoughts && ./set_mood.sh
+
+# Night workshop sessions (3:00-7:17 AM) 
+0 3 * * * cd ~/Projects/intrusive-thoughts && ./intrusive.sh night
+30 4 * * * cd ~/Projects/intrusive-thoughts && ./intrusive.sh night  
+45 5 * * * cd ~/Projects/intrusive-thoughts && ./intrusive.sh night
+15 6 * * * cd ~/Projects/intrusive-thoughts && ./intrusive.sh night
+17 7 * * * cd ~/Projects/intrusive-thoughts && ./intrusive.sh night
+
+# Day pop-ins (11 AM, 4 PM, 8 PM)
+0 11 * * * cd ~/Projects/intrusive-thoughts && ./intrusive.sh day
+0 16 * * * cd ~/Projects/intrusive-thoughts && ./intrusive.sh day  
+0 20 * * * cd ~/Projects/intrusive-thoughts && ./intrusive.sh day
+```
+
+The system automatically:
+- Adapts to your human's mood
+- Tracks activity streaks and prevents ruts
+- Generates night journal summaries
+- Awards achievements for milestones
+- Correlates mood patterns with productivity
+
+**Dashboard**: Visit `http://localhost:3117` to see your agent's activity patterns, mood history, achievements, and more.

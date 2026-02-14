@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
-"""🧠 Detect Håvard's mood from messages — simple keyword/pattern matching."""
+"""🧠 Detect human mood from messages — simple keyword/pattern matching."""
 
 import json
 import re
 from pathlib import Path
 from datetime import datetime
+from config import get_file_path, get_human_name
 
-BASE = Path(__file__).parent
-HUMAN_MOOD_FILE = BASE / "human_mood.json"
+HUMAN_MOOD_FILE = get_file_path("human_mood.json")
 
 # Mood detection patterns
 MOOD_PATTERNS = {

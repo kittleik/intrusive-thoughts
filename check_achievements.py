@@ -5,12 +5,12 @@ import json
 from pathlib import Path
 from datetime import datetime, timedelta
 from collections import Counter, defaultdict
+from config import get_file_path
 
-BASE = Path(__file__).parent
-ACHIEVEMENTS_FILE = BASE / "achievements.json"
-EARNED_FILE = BASE / "achievements_earned.json"
-HISTORY_FILE = BASE / "history.json"
-MOOD_HISTORY_FILE = BASE / "mood_history.json"
+ACHIEVEMENTS_FILE = get_file_path("achievements.json")
+EARNED_FILE = get_file_path("achievements_earned.json")
+HISTORY_FILE = get_file_path("history.json")
+MOOD_HISTORY_FILE = get_file_path("mood_history.json")
 
 def load_achievements():
     """Load achievement definitions."""

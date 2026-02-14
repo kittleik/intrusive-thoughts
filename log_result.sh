@@ -1,11 +1,13 @@
 #!/bin/bash
-# Log what Ember did AND drift the mood based on outcome
+# Log what the agent did AND drift the mood based on outcome
 # Usage: log_result.sh <thought_id> <mood> "<summary>" [energy: high|neutral|low] [vibe: positive|neutral|negative]
 # Example: log_result.sh build-tool night "Built a disk usage dashboard" high positive
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-HISTORY_FILE="$SCRIPT_DIR/history.json"
-MOOD_FILE="$SCRIPT_DIR/today_mood.json"
+source "$SCRIPT_DIR/load_config.sh"
+
+HISTORY_FILE="$DATA_DIR/history.json"
+MOOD_FILE="$DATA_DIR/today_mood.json"
 
 THOUGHT_ID="${1:-unknown}"
 MOOD="${2:-unknown}"
@@ -129,7 +131,7 @@ else:
 print(f"Logged: {entry['thought_id']} ({entry['mood']}) - {entry['summary'][:60]}")
 
 # === STREAK TRACKING ===
-streaks_file = '$SCRIPT_DIR/streaks.json'
+streaks_file = '$DATA_DIR/streaks.json'
 try:
     with open(streaks_file) as f:
         streaks = json.load(f)
@@ -218,10 +220,10 @@ with open(streaks_file, 'w') as f:
 # Check for achievements (if the script exists)
 import subprocess
 import os
-achievements_script = '$SCRIPT_DIR/check_achievements.py'
+achievements_script = '$DATA_DIR/check_achievements.py'
 if os.path.exists(achievements_script):
     try:
-        subprocess.run(['python3', achievements_script], cwd='$SCRIPT_DIR', timeout=10)
+        subprocess.run(['python3', achievements_script], cwd='$DATA_DIR', timeout=10)
     except:
         pass
 

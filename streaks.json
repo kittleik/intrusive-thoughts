@@ -1,23 +1,36 @@
 {
   "version": 1,
   "current_streaks": {
-    "activity_type": [],
-    "mood": [],
+    "activity_type": [
+      "morning-mood"
+    ],
+    "mood": [
+      "day"
+    ],
     "time_slot": []
   },
-  "recent_activities": [],
+  "recent_activities": [
+    {
+      "thought_id": "morning-mood",
+      "mood": "day",
+      "timestamp": "2026-02-14T09:07:42+01:00",
+      "hour": 9,
+      "energy": "neutral",
+      "vibe": "positive"
+    }
+  ],
   "anti_rut_weights": {
-    "build-tool": 1.0,
-    "upgrade-project": 1.0,
+    "build-tool": 1.2,
+    "upgrade-project": 1.2,
     "install-explore": 1.0,
     "moltbook-night": 1.0,
     "system-tinker": 1.0,
     "learn": 1.0,
     "memory-review": 1.0,
-    "creative-chaos": 1.0,
+    "creative-chaos": 1.2,
     "moltbook-social": 1.0,
     "share-discovery": 1.0,
-    "moltbook-post": 1.0,
+    "moltbook-post": 1.2,
     "check-projects": 1.0,
     "random-thought": 1.0,
     "ask-opinion": 1.0,

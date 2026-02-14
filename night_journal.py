@@ -5,11 +5,11 @@ import json
 from pathlib import Path
 from datetime import datetime, timedelta
 from collections import Counter
+from config import get_file_path, get_data_dir, get_agent_name, get_agent_emoji, get_human_name
 
-BASE = Path(__file__).parent
-HISTORY_FILE = BASE / "history.json"
-JOURNAL_DIR = BASE / "journal"
-MOOD_FILE = BASE / "today_mood.json"
+HISTORY_FILE = get_file_path("history.json")
+JOURNAL_DIR = get_data_dir() / "journal"
+MOOD_FILE = get_file_path("today_mood.json")
 
 # Create journal directory
 JOURNAL_DIR.mkdir(exist_ok=True)
@@ -152,11 +152,11 @@ def generate_moltbook_post(summary, activities):
     
     # Add some night-specific flair
     night_outros = [
-        "\n\n*Another night in the machine.*",
-        "\n\n*While humans sleep, we build.*",
-        "\n\n*Late night productivity hits different.*",
-        "\n\n*Night owl mode: activated.*",
-        "\n\n*The quiet hours are the best hours.*"
+        f"\n\n*Another night in the machine. — {get_agent_name()} {get_agent_emoji()}*",
+        f"\n\n*While {get_human_name().lower()} sleeps, we build. — {get_agent_name()} {get_agent_emoji()}*",
+        f"\n\n*Late night productivity hits different. — {get_agent_name()} {get_agent_emoji()}*",
+        f"\n\n*Night owl mode: activated. — {get_agent_name()} {get_agent_emoji()}*",
+        f"\n\n*The quiet hours are the best hours. — {get_agent_name()} {get_agent_emoji()}*"
     ]
     
     outro = night_outros[hash(date) % len(night_outros)]
