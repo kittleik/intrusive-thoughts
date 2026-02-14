@@ -1,1 +1,142 @@
-[]
+[
+  {
+    "date": "2026-02-01",
+    "mood_id": "curious",
+    "emoji": "🔍",
+    "name": "Curious",
+    "weather": "cloudy 5°C Oslo",
+    "news_vibes": ["AI breakthrough", "Tech conference"],
+    "energy_score": 1,
+    "vibe_score": 1
+  },
+  {
+    "date": "2026-02-02", 
+    "mood_id": "hyperfocus",
+    "emoji": "🔥",
+    "name": "Hyperfocus",
+    "weather": "clear -2°C Oslo",
+    "news_vibes": ["Crypto surge", "New framework release"],
+    "energy_score": 2,
+    "vibe_score": 1
+  },
+  {
+    "date": "2026-02-03",
+    "mood_id": "cozy",
+    "emoji": "☕",
+    "name": "Cozy", 
+    "weather": "snow 1°C Oslo",
+    "news_vibes": ["Weekend vibes", "Open source milestone"],
+    "energy_score": 0,
+    "vibe_score": 2
+  },
+  {
+    "date": "2026-02-04",
+    "mood_id": "social",
+    "emoji": "💬",
+    "name": "Social",
+    "weather": "clear 3°C Oslo",
+    "news_vibes": ["Community event", "New social platform"],
+    "energy_score": 1,
+    "vibe_score": 2
+  },
+  {
+    "date": "2026-02-05",
+    "mood_id": "philosophical",
+    "emoji": "🌌",
+    "name": "Philosophical",
+    "weather": "fog 0°C Oslo",
+    "news_vibes": ["Ethics debate", "Future of work"],
+    "energy_score": 0,
+    "vibe_score": 0
+  },
+  {
+    "date": "2026-02-06",
+    "mood_id": "chaotic",
+    "emoji": "⚡",
+    "name": "Chaotic",
+    "weather": "storm 6°C Oslo",
+    "news_vibes": ["Market volatility", "Unexpected announcement"],
+    "energy_score": 2,
+    "vibe_score": -1
+  },
+  {
+    "date": "2026-02-07",
+    "mood_id": "determined",
+    "emoji": "🎯",
+    "name": "Determined", 
+    "weather": "clear 2°C Oslo",
+    "news_vibes": ["Deadline approaching", "Sprint planning"],
+    "energy_score": 2,
+    "vibe_score": 1
+  },
+  {
+    "date": "2026-02-08",
+    "mood_id": "restless",
+    "emoji": "🦞",
+    "name": "Restless",
+    "weather": "wind 4°C Oslo",
+    "news_vibes": ["Breaking news", "System updates"],
+    "energy_score": 1,
+    "vibe_score": 0
+  },
+  {
+    "date": "2026-02-09",
+    "mood_id": "curious",
+    "emoji": "🔍", 
+    "name": "Curious",
+    "weather": "cloudy 1°C Oslo",
+    "news_vibes": ["New discovery", "Research publication"],
+    "energy_score": 1,
+    "vibe_score": 1
+  },
+  {
+    "date": "2026-02-10",
+    "mood_id": "hyperfocus",
+    "emoji": "🔥",
+    "name": "Hyperfocus",
+    "weather": "clear -1°C Oslo", 
+    "news_vibes": ["Code review", "Performance optimization"],
+    "energy_score": 2,
+    "vibe_score": 1
+  },
+  {
+    "date": "2026-02-11",
+    "mood_id": "cozy",
+    "emoji": "☕",
+    "name": "Cozy",
+    "weather": "rain 3°C Oslo",
+    "news_vibes": ["Rainy day", "Documentation day"],
+    "energy_score": 0,
+    "vibe_score": 2
+  },
+  {
+    "date": "2026-02-12",
+    "mood_id": "social",
+    "emoji": "💬",
+    "name": "Social",
+    "weather": "clear 5°C Oslo",
+    "news_vibes": ["Community meetup", "Open source collaboration"],
+    "energy_score": 1,
+    "vibe_score": 2
+  },
+  {
+    "date": "2026-02-13",
+    "mood_id": "determined",
+    "emoji": "🎯",
+    "name": "Determined",
+    "weather": "cloudy 2°C Oslo",
+    "news_vibes": ["Feature freeze", "Release candidate"],
+    "energy_score": 2,
+    "vibe_score": 1
+  },
+  {
+    "date": "2026-02-14",
+    "mood_id": "curious", 
+    "emoji": "🔍",
+    "name": "Curious",
+    "weather": "foggy 3°C Oslo",
+    "news_vibes": ["Valentine's Day", "Munich Security Conference", "v1.0 shipping day"],
+    "energy_score": 2,
+    "vibe_score": 2
+  }
+]
