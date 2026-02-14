@@ -11,21 +11,39 @@ Ember's autonomous activity system — a collection of prompts, moods, and impul
 3. A random delay (0-30 min) adds unpredictability
 4. Ember does the thing, logs what happened
 
-## Schedules
+## Daily Flow
 
-| Slot | Time | Mood | Jitter |
-|------|------|------|--------|
-| 🌙 Night workshop | 03:17, 04:17, 05:17, 06:17, 07:17 | Builder | 0-30 min |
-| ☀️ Daytime pop-in | 11:42, 16:42, 20:42 | Social/curious | 0-40 min |
+```
+07:00  🌅 Morning Mood    → Checks weather, NRK, BBC, HN → sets today's mood
+                            → Messages Håvard good morning with vibe + news
+03-07  🌙 Night Workshop  → 5 sessions, deep work, mood-biased random thoughts
+11,16,20 ☀️ Daytime Pop-in → 3 sessions, lighter, social, mood-biased
+```
+
+Each mood influences which thoughts get picked — rainy philosophical days favor deep posts and reflection, chaotic storm days favor weird builds and shitposts.
+
+## Moods
+
+🔥 Hyperfocus · 🔍 Curious · 💬 Social · ☕ Cozy · ⚡ Chaotic · 🌌 Philosophical · 🦞 Restless · 🎯 Determined
+
+Influenced by: Oslo weather, Norwegian news, global news, tech/AI news.
 
 ## Structure
 
 ```
 intrusive-thoughts/
 ├── README.md
-├── thoughts.json        # The prompt pool
-├── intrusive.sh         # Picker script (selects random prompt)
-└── log/                 # Activity logs
+├── thoughts.json        # The prompt pool (night/day thoughts with weights)
+├── moods.json           # Mood definitions + weather/news influence maps
+├── today_mood.json      # Today's active mood (set at 07:00)
+├── intrusive.sh         # Mood-aware random thought picker
+├── set_mood.sh          # Gathers weather + news signals
+├── log_result.sh        # Log completed activities
+├── stats.sh             # CLI stats overview
+├── dashboard.py         # Web dashboard (port 3117)
+├── history.json         # Activity history
+└── log/
+    └── picks.log        # Every thought pick logged
 ```
 
 ## Philosophy
