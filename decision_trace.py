@@ -65,7 +65,10 @@ def explain_decision(decision):
     winner = decision.get("winner", {})
     print(f"\n🎯 Selected Action:")
     print(f"   ID: {winner.get('id', 'Unknown')}")
-    print(f"   Final Weight: {winner.get('final_weight', 0):.2f}")
+    try:
+        print(f"   Final Weight: {float(winner.get('final_weight', 0)):.2f}")
+    except (ValueError, TypeError):
+        print(f"   Final Weight: {winner.get('final_weight', 'N/A')}")
     print(f"   Prompt: {winner.get('prompt', 'No prompt available')}")
     
     boost_reasons = winner.get("boost_reasons", [])

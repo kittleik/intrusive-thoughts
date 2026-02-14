@@ -773,6 +773,49 @@ async function loadAchievements() {
   }
 }
 
+async function loadMoodTimeline() {
+  try {
+    const response = await fetch('/api/mood-timeline');
+    const data = await response.json();
+    const el = document.getElementById('mood-timeline');
+    if (!el) return;
+    if (!data || data.length === 0) {
+      el.innerHTML = '<div class="empty">No mood history yet</div>';
+      return;
+    }
+    el.innerHTML = data.map(e => `<div class="stream-item"><span class="time">${e.date || ''}</span> ${e.emoji || ''} ${e.mood || ''}</div>`).join('');
+  } catch (e) { document.getElementById('mood-timeline').innerHTML = '<div class="empty">No mood history yet</div>'; }
+}
+
+async function loadStreaks() {
+  try {
+    const response = await fetch('/api/stats');
+    const data = await response.json();
+    const el = document.getElementById('streaks-content');
+    if (!el) return;
+    if (data.streaks && Object.keys(data.streaks).length > 0) {
+      el.innerHTML = Object.entries(data.streaks).map(([k,v]) => `<div class="stream-item"><strong>${k}</strong>: ${v}</div>`).join('');
+    } else {
+      el.innerHTML = '<div class="empty">No streaks recorded yet</div>';
+    }
+  } catch (e) { document.getElementById('streaks-content').innerHTML = '<div class="empty">No streaks recorded yet</div>'; }
+}
+
+async function loadNightData() {
+  try {
+    const response = await fetch('/api/night-stats');
+    const data = await response.json();
+    const el = document.getElementById('night-stats-content');
+    if (!el) return;
+    el.innerHTML = `<div class="stream-item">🌙 Night picks: <strong>${data.night_picks || 0}</strong> | ☀️ Day picks: <strong>${data.day_picks || 0}</strong> | Total: <strong>${data.total || 0}</strong></div>`;
+    const timeline = document.getElementById('night-timeline');
+    if (timeline) timeline.innerHTML = '<div class="empty">Night timeline builds over workshop sessions</div>';
+  } catch (e) {
+    const el = document.getElementById('night-stats-content');
+    if (el) el.innerHTML = '<div class="empty">No night data yet</div>';
+  }
+}
+
 // Load all the additional data
 async function loadAllData() {
   await Promise.all([
@@ -781,7 +824,9 @@ async function loadAllData() {
     refreshStream(),
     loadIntrospection(),
     loadAchievements(),
-    // Add more loads as needed
+    loadMoodTimeline(),
+    loadStreaks(),
+    loadNightData(),
   ]);
 }
 
