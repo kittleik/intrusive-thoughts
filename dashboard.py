@@ -261,9 +261,64 @@ def build_html():
   {''.join(f"""<div class="history-item"><span class="time">{e.get('timestamp','?')[:16].replace('T',' ')}</span><span class="mood-tag mood-{e.get('mood','day')}">{e.get('mood','?')}</span> <strong>{e.get('thought_id','?')}</strong> <span style="color: var(--{'success' if e.get('vibe') == 'positive' else 'warning' if e.get('vibe') == 'negative' else 'dim'}); font-size: 0.8rem;">[{e.get('energy','?')}/{e.get('vibe','?')}]</span><div class="summary">{e.get('summary','')}</div></div>""" for e in recent) if recent else '<div class="empty">Nothing yet. First night session fires at 03:17 🌙</div>'}
 </div>
 
-<footer>{get_agent_name()} {get_agent_emoji()} × Intrusive Thoughts v2 — refreshed {datetime.now().strftime('%Y-%m-%d %H:%M')}</footer>
+<div class="section">
+  <h2>🚦 System Health</h2>
+  <div id="health-status">Loading v1.0 systems...</div>
+  <script>
+    fetch('/api/health').then(r=>r.json()).then(d=>{{
+      let html = '<div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));">';
+      if(d.components) {{
+        for(const [name, comp] of Object.entries(d.components)) {{
+          html += `<div class="stat-card"><div class="number">${{comp.emoji}}</div><div class="label">${{name}}</div></div>`;
+        }}
+      }}
+      html += '</div>';
+      if(d.metrics) {{
+        html += `<div style="color:var(--dim);font-size:0.8rem;margin-top:0.5rem;">Heartbeats: ${{d.metrics.total_heartbeats || 0}} | Incidents: ${{d.metrics.total_incidents || 0}} | Healthy streak: ${{d.metrics.consecutive_healthy || 0}}</div>`;
+      }}
+      document.getElementById('health-status').innerHTML = html;
+    }}).catch(()=>{{document.getElementById('health-status').innerHTML='<div class="empty">Health monitor unavailable</div>';}});
+  </script>
+</div>
+
+<footer>{get_agent_name()} {get_agent_emoji()} × Intrusive Thoughts v1.0 — refreshed {datetime.now().strftime('%Y-%m-%d %H:%M')}</footer>
 </body>
 </html>"""
+
+
+def load_v1_systems():
+    """Load data from all v1.0 systems for dashboard display."""
+    systems = {}
+    try:
+        from health_monitor import get_dashboard_data
+        systems["health"] = get_dashboard_data()
+    except Exception:
+        systems["health"] = None
+    try:
+        from memory_system import MemorySystem
+        ms = MemorySystem()
+        systems["memory"] = ms.get_stats()
+    except Exception:
+        systems["memory"] = None
+    try:
+        from trust_system import TrustSystem
+        ts = TrustSystem()
+        systems["trust"] = ts.get_stats()
+    except Exception:
+        systems["trust"] = None
+    try:
+        from proactive import ProactiveAgent
+        pa = ProactiveAgent()
+        systems["proactive"] = pa.wal_stats()
+    except Exception:
+        systems["proactive"] = None
+    try:
+        from self_evolution import SelfEvolutionSystem
+        se = SelfEvolutionSystem()
+        systems["evolution"] = se.get_stats()
+    except Exception:
+        systems["evolution"] = None
+    return systems
 
 
 class DashboardHandler(SimpleHTTPRequestHandler):
@@ -287,6 +342,21 @@ class DashboardHandler(SimpleHTTPRequestHandler):
                 "thought_counts": dict(thought_counts),
                 "recent": history[-10:][::-1],
             }).encode())
+        elif self.path == "/api/systems":
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.end_headers()
+            self.wfile.write(json.dumps(load_v1_systems(), default=str).encode())
+        elif self.path == "/api/health":
+            try:
+                from health_monitor import get_dashboard_data
+                data = get_dashboard_data()
+            except Exception:
+                data = {"error": "health monitor unavailable"}
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.end_headers()
+            self.wfile.write(json.dumps(data, default=str).encode())
         else:
             self.send_response(404)
             self.end_headers()
