@@ -3,13 +3,21 @@
 # 🧠 Intrusive Thoughts — Interactive Setup Wizard
 # GitHub Issue #22: Personality-driven onboarding wizard
 #
-# Usage: ./wizard.sh
+# Usage: ./wizard.sh [--dry-run]
+#        --dry-run: Show what would be created without creating it
 #
 # This wizard guides users through personality-driven agent configuration.
 # It's colorful, emoji-rich, and feels like a conversation, not a form.
 # ============================================================================
 
 set -euo pipefail
+
+# Check for --dry-run flag
+DRY_RUN=false
+if [[ "${1:-}" == "--dry-run" ]]; then
+    DRY_RUN=true
+    shift
+fi
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CONFIG_EXAMPLE="$SCRIPT_DIR/config.example.json"
@@ -865,6 +873,14 @@ section_preview_confirm() {
 }
 
 create_presets() {
+    if [[ "$DRY_RUN" == "true" ]]; then
+        echo -e "${YELLOW}[DRY RUN] Would create archetype presets:${NC}"
+        echo "  📁 presets/ directory with 5 archetype templates:"
+        echo "     - tinkerer.json, social-butterfly.json, philosopher.json"
+        echo "     - night-owl.json, guardian.json"
+        return
+    fi
+    
     mkdir -p "$PRESETS_DIR"
     
     # Tinkerer preset
@@ -1006,6 +1022,19 @@ EOF
 }
 
 generate_config_files() {
+    if [[ "$DRY_RUN" == "true" ]]; then
+        echo -e "${YELLOW}[DRY RUN] Would create configuration files:${NC}"
+        echo "  📄 config.json - Agent configuration with:"
+        echo "     - Name: $AGENT_NAME"  
+        echo "     - Emoji: $AGENT_EMOJI"
+        echo "     - Morning time: $MORNING_TIME"
+        echo "     - Night work: $NIGHT_START-$NIGHT_END"
+        echo "     - Autonomy level: $AUTONOMY_LEVEL"
+        echo "  📄 moods.json - ${#SELECTED_MOODS[@]} selected moods + ${#CUSTOM_MOODS[@]} custom moods"
+        echo "  📄 thoughts.json.backup.[timestamp] - Backup of existing thoughts"
+        return
+    fi
+    
     echo "Writing configuration files..."
     
     # Generate main config.json
@@ -1058,6 +1087,16 @@ generate_config_files() {
 
 update_intrusive_script() {
     local intrusive_script="$SCRIPT_DIR/intrusive.sh"
+    
+    if [[ "$DRY_RUN" == "true" ]]; then
+        echo -e "${YELLOW}[DRY RUN] Would update intrusive.sh:${NC}"
+        if ! grep -q "wizard)" "$intrusive_script" 2>/dev/null; then
+            echo "  ➕ Add 'wizard' subcommand to intrusive.sh"
+        else
+            echo "  ✅ intrusive.sh already has wizard subcommand"
+        fi
+        return
+    fi
     
     # Check if wizard subcommand already exists
     if ! grep -q "wizard)" "$intrusive_script" 2>/dev/null; then
@@ -1126,24 +1165,42 @@ main() {
     
     # Final celebration
     clear
-    banner "🎉 AGENT BORN! 🎉"
-    
-    echo -e "${GREEN}${BOLD}${AGENT_EMOJI} ${AGENT_NAME} is alive!${NC}\n"
-    
-    echo -e "${CYAN}What I created:${NC}"
-    echo -e "  ✅ config.json — Your agent's core configuration"
-    echo -e "  ✅ moods.json — Their customized emotional palette" 
-    echo -e "  ✅ thoughts.json — Their thought pool (preserved with notes)"
-    echo -e "  ✅ presets/ — Archetype templates for future agents"
-    echo -e "  ✅ intrusive.sh — Updated with 'wizard' subcommand"
-    
-    echo -e "\n${YELLOW}Next steps:${NC}"
-    echo -e "  1. Run './health_cli.sh status' to check system health"
-    echo -e "  2. Set up OpenClaw cron jobs for autonomous behavior"
-    echo -e "  3. Run 'python3 dashboard.py' to watch ${AGENT_NAME} in action"
-    echo -e "  4. Message them! They're waiting to meet you."
-    
-    echo -e "\n${GREEN}${BOLD}Your agent is ready to think, dream, and surprise you. 🌟${NC}"
+    if [[ "$DRY_RUN" == "true" ]]; then
+        banner "📋 DRY RUN COMPLETE 📋"
+        
+        echo -e "${YELLOW}${BOLD}${AGENT_EMOJI} ${AGENT_NAME} configuration preview complete!${NC}\n"
+        
+        echo -e "${CYAN}What would be created:${NC}"
+        echo -e "  📄 config.json — Agent configuration"
+        echo -e "  📄 moods.json — Emotional palette with ${#SELECTED_MOODS[@]} moods" 
+        echo -e "  📄 thoughts.json.backup — Backup of existing thoughts"
+        echo -e "  📁 presets/ — 5 archetype templates"
+        echo -e "  🔧 intrusive.sh — Updated with 'wizard' subcommand"
+        
+        echo -e "\n${YELLOW}To actually create these files:${NC}"
+        echo -e "  Run: ${BOLD}./wizard.sh${NC} (without --dry-run)"
+        
+        echo -e "\n${GREEN}${BOLD}Dry run complete - no files were modified! 🔍${NC}"
+    else
+        banner "🎉 AGENT BORN! 🎉"
+        
+        echo -e "${GREEN}${BOLD}${AGENT_EMOJI} ${AGENT_NAME} is alive!${NC}\n"
+        
+        echo -e "${CYAN}What I created:${NC}"
+        echo -e "  ✅ config.json — Your agent's core configuration"
+        echo -e "  ✅ moods.json — Their customized emotional palette" 
+        echo -e "  ✅ thoughts.json — Their thought pool (preserved with notes)"
+        echo -e "  ✅ presets/ — Archetype templates for future agents"
+        echo -e "  ✅ intrusive.sh — Updated with 'wizard' subcommand"
+        
+        echo -e "\n${YELLOW}Next steps:${NC}"
+        echo -e "  1. Run './health_cli.sh status' to check system health"
+        echo -e "  2. Set up OpenClaw cron jobs for autonomous behavior"
+        echo -e "  3. Run 'python3 dashboard.py' to watch ${AGENT_NAME} in action"
+        echo -e "  4. Message them! They're waiting to meet you."
+        
+        echo -e "\n${GREEN}${BOLD}Your agent is ready to think, dream, and surprise you. 🌟${NC}"
+    fi
 }
 
 # Check dependencies
