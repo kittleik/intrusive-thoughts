@@ -42,11 +42,73 @@ def load_thoughts():
     except:
         return {}
 
+def load_mood_history():
+    try:
+        data = json.loads((BASE / "mood_history.json").read_text())
+        return data.get("history", [])
+    except:
+        return []
+
+def load_streaks():
+    try:
+        return json.loads((BASE / "streaks.json").read_text())
+    except:
+        return {"current_streaks": {}}
+
+def load_achievements():
+    try:
+        return json.loads((BASE / "achievements_earned.json").read_text())
+    except:
+        return {"earned": [], "total_points": 0}
+
+def load_soundtracks():
+    try:
+        return json.loads((BASE / "soundtracks.json").read_text())
+    except:
+        return {}
+
+def load_today_mood():
+    try:
+        return json.loads((BASE / "today_mood.json").read_text())
+    except:
+        return {}
+
+def load_journal_entries():
+    try:
+        journal_dir = BASE / "journal"
+        entries = []
+        if journal_dir.exists():
+            for file in journal_dir.glob("*.md"):
+                entries.append({
+                    "date": file.stem,
+                    "content": file.read_text()[:300] + "..." if len(file.read_text()) > 300 else file.read_text()
+                })
+        return sorted(entries, key=lambda x: x["date"], reverse=True)[:5]
+    except:
+        return []
+
+def get_productivity_stats():
+    try:
+        import subprocess
+        result = subprocess.run(['python3', str(BASE / 'analyze.py'), '--json'], 
+                              capture_output=True, text=True, timeout=10)
+        if result.returncode == 0:
+            return json.loads(result.stdout)
+    except:
+        pass
+    return {"insights": [], "moods": {}}
 
 def build_html():
     history = load_history()
     picks = load_picks()
     thoughts = load_thoughts()
+    mood_history = load_mood_history()
+    streaks = load_streaks()
+    achievements = load_achievements()
+    soundtracks = load_soundtracks()
+    today_mood = load_today_mood()
+    journal_entries = load_journal_entries()
+    productivity_stats = get_productivity_stats()
 
     # Stats
     thought_counts = Counter(p.get("thought", "?") for p in picks)
@@ -72,6 +134,25 @@ def build_html():
                 "times_picked": thought_counts.get(t["id"], 0),
             })
 
+    # Mood history for graph (last 14 days)
+    mood_graph_data = mood_history[-14:] if mood_history else []
+    
+    # Current streaks
+    current_streaks = streaks.get("current_streaks", {})
+    
+    # Recent achievements
+    recent_achievements = achievements.get("earned", [])[-5:][::-1]
+    
+    # Today's soundtrack
+    today_soundtrack = ""
+    if today_mood:
+        mood_id = today_mood.get("drifted_to", today_mood.get("id", ""))
+        soundtrack_info = soundtracks.get("mood_soundtracks", {}).get(mood_id, {})
+        if soundtrack_info:
+            vibe = soundtrack_info.get("vibe_description", "")
+            genres = ", ".join(soundtrack_info.get("genres", [])[:3])
+            today_soundtrack = f"{vibe} — {genres}"
+
     return f"""<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -79,12 +160,13 @@ def build_html():
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>🧠 Intrusive Thoughts</title>
 <style>
-  :root {{ --bg: #0a0a0f; --card: #12121a; --border: #1e1e2e; --text: #c9c9d9; --accent: #f59e0b; --accent2: #8b5cf6; --dim: #555568; }}
+  :root {{ --bg: #0a0a0f; --card: #12121a; --border: #1e1e2e; --text: #c9c9d9; --accent: #f59e0b; --accent2: #8b5cf6; --dim: #555568; --success: #22c55e; --warning: #eab308; }}
   * {{ margin: 0; padding: 0; box-sizing: border-box; }}
-  body {{ background: var(--bg); color: var(--text); font-family: 'SF Mono', 'Fira Code', monospace; padding: 2rem; max-width: 1200px; margin: 0 auto; }}
+  body {{ background: var(--bg); color: var(--text); font-family: 'SF Mono', 'Fira Code', monospace; padding: 2rem; max-width: 1400px; margin: 0 auto; }}
   h1 {{ color: var(--accent); font-size: 1.8rem; margin-bottom: 0.3rem; }}
   .subtitle {{ color: var(--dim); margin-bottom: 2rem; }}
   .grid {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 2rem; }}
+  .grid-2 {{ display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 2rem; }}
   .stat-card {{ background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; text-align: center; }}
   .stat-card .number {{ font-size: 2.5rem; font-weight: bold; color: var(--accent); }}
   .stat-card .label {{ color: var(--dim); font-size: 0.85rem; margin-top: 0.3rem; }}
@@ -106,18 +188,65 @@ def build_html():
   .thought-item .prompt {{ font-size: 0.85rem; flex: 1; }}
   .thought-item .meta {{ text-align: right; flex-shrink: 0; margin-left: 1rem; font-size: 0.75rem; color: var(--dim); }}
   .empty {{ color: var(--dim); font-style: italic; text-align: center; padding: 2rem; }}
+  .mood-dot {{ width: 12px; height: 12px; border-radius: 50%; margin: 0 4px; display: inline-block; }}
+  .streak-item {{ background: var(--border); padding: 0.8rem; border-radius: 8px; margin-bottom: 0.5rem; }}
+  .achievement-item {{ display: flex; align-items: center; margin-bottom: 0.8rem; padding: 0.8rem; background: var(--border); border-radius: 8px; }}
+  .achievement-tier {{ margin-right: 0.8rem; font-size: 1.2rem; }}
+  .achievement-info h4 {{ color: var(--accent); margin-bottom: 0.2rem; }}
+  .achievement-info .desc {{ color: var(--dim); font-size: 0.8rem; }}
+  .journal-entry {{ background: var(--border); padding: 1rem; border-radius: 8px; margin-bottom: 1rem; }}
+  .journal-date {{ color: var(--accent); font-size: 0.85rem; margin-bottom: 0.5rem; }}
+  .journal-content {{ font-size: 0.9rem; line-height: 1.4; }}
+  .insight-item {{ background: var(--border); padding: 0.8rem; border-radius: 8px; margin-bottom: 0.5rem; font-size: 0.9rem; }}
+  .soundtrack {{ background: linear-gradient(135deg, var(--accent2), var(--accent)); padding: 1rem; border-radius: 12px; text-align: center; color: white; }}
   footer {{ text-align: center; color: var(--dim); font-size: 0.75rem; margin-top: 2rem; }}
 </style>
 </head>
 <body>
 <h1>🧠 Intrusive Thoughts</h1>
-<p class="subtitle">What Ember does when you're not looking</p>
+<p class="subtitle">What Ember does when you're not looking — now with memory, streaks, achievements, and vibes</p>
+
+{f'<div class="soundtrack">{today_soundtrack}</div><br>' if today_soundtrack else ''}
 
 <div class="grid">
   <div class="stat-card"><div class="number">{total_picks}</div><div class="label">Total Impulses</div></div>
   <div class="stat-card"><div class="number">{total_completed}</div><div class="label">Completed</div></div>
-  <div class="stat-card"><div class="number">{mood_counts.get('night', 0)}</div><div class="label">🌙 Night Sessions</div></div>
-  <div class="stat-card"><div class="number">{mood_counts.get('day', 0)}</div><div class="label">☀️ Day Sessions</div></div>
+  <div class="stat-card"><div class="number">{len(achievements.get('earned', []))}</div><div class="label">🏆 Achievements</div></div>
+  <div class="stat-card"><div class="number">{achievements.get('total_points', 0)}</div><div class="label">🎯 Points</div></div>
+</div>
+
+<div class="grid-2">
+  <div class="section">
+    <h2>📈 Mood History (Last 14 Days)</h2>
+    {''.join(f'<span class="mood-dot" style="background: hsl({hash(m.get("mood_id",""))%360}, 70%, 60%)" title="{m.get("date","")} - {m.get("mood_id","")}"></span>' for m in mood_graph_data) if mood_graph_data else '<div class="empty">No mood history yet</div>'}
+    <div style="margin-top: 1rem; font-size: 0.8rem; color: var(--dim);">
+      {f"Recent pattern: {' → '.join([m.get('mood_id','?')[:4] for m in mood_graph_data[-5:]])}" if len(mood_graph_data) >= 5 else "Building mood patterns..."}
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>🔥 Current Streaks</h2>
+    {f'''<div class="streak-item"><strong>Activity:</strong> {current_streaks.get('activity_type', ['none'])[0]} × {len(current_streaks.get('activity_type', []))}</div>''' if current_streaks.get('activity_type') else ''}
+    {f'''<div class="streak-item"><strong>Mood:</strong> {current_streaks.get('mood', ['none'])[0]} × {len(current_streaks.get('mood', []))}</div>''' if current_streaks.get('mood') else ''}
+    {'<div class="empty">No active streaks</div>' if not current_streaks.get('activity_type') and not current_streaks.get('mood') else ''}
+  </div>
+</div>
+
+<div class="grid-2">
+  <div class="section">
+    <h2>🏆 Recent Achievements</h2>
+    {''.join(f"""<div class="achievement-item"><div class="achievement-tier">{ {"bronze": "🥉", "silver": "🥈", "gold": "🥇", "platinum": "💎"}.get(a.get("tier", "bronze"), "🏆") }</div><div class="achievement-info"><h4>{a.get("name", "Unknown")}</h4><div class="desc">{a.get("description", "")} (+{a.get("points", 0)} pts)</div></div></div>""" for a in recent_achievements) if recent_achievements else '<div class="empty">No achievements yet — keep grinding!</div>'}
+  </div>
+
+  <div class="section">
+    <h2>📊 Productivity Insights</h2>
+    {''.join(f'<div class="insight-item">{insight}</div>' for insight in productivity_stats.get('insights', [])) if productivity_stats.get('insights') else '<div class="empty">Building productivity patterns...</div>'}
+  </div>
+</div>
+
+<div class="section">
+  <h2>📓 Night Journal Entries</h2>
+  {''.join(f'''<div class="journal-entry"><div class="journal-date">{entry["date"]}</div><div class="journal-content">{entry["content"].replace('**', '').replace('*', '')}</div></div>''' for entry in journal_entries) if journal_entries else '<div class="empty">No journal entries yet — night summaries auto-generate after sessions</div>'}
 </div>
 
 <div class="section">
@@ -129,15 +258,10 @@ def build_html():
 
 <div class="section">
   <h2>📝 Recent Activity</h2>
-  {''.join(f"""<div class="history-item"><span class="time">{e.get('timestamp','?')[:16].replace('T',' ')}</span><span class="mood-tag mood-{e.get('mood','day')}">{e.get('mood','?')}</span> <strong>{e.get('thought_id','?')}</strong><div class="summary">{e.get('summary','')}</div></div>""" for e in recent) if recent else '<div class="empty">Nothing yet. First night session fires at 03:17 🌙</div>'}
+  {''.join(f"""<div class="history-item"><span class="time">{e.get('timestamp','?')[:16].replace('T',' ')}</span><span class="mood-tag mood-{e.get('mood','day')}">{e.get('mood','?')}</span> <strong>{e.get('thought_id','?')}</strong> <span style="color: var(--{'success' if e.get('vibe') == 'positive' else 'warning' if e.get('vibe') == 'negative' else 'dim'}); font-size: 0.8rem;">[{e.get('energy','?')}/{e.get('vibe','?')}]</span><div class="summary">{e.get('summary','')}</div></div>""" for e in recent) if recent else '<div class="empty">Nothing yet. First night session fires at 03:17 🌙</div>'}
 </div>
 
-<div class="section">
-  <h2>🎰 Thought Catalog</h2>
-  {''.join(f"""<div class="thought-item"><div class="prompt"><span class="mood-tag mood-{t['mood']}">{t['mood']}</span> <strong>{t['id']}</strong><br>{t['prompt'][:120]}{'...' if len(t['prompt']) > 120 else ''}</div><div class="meta">w:{t['weight']}<br>{t['times_picked']}x picked</div></div>""" for t in sorted(all_thoughts, key=lambda x: -x['times_picked']))}
-</div>
-
-<footer>Ember 🦞 × Intrusive Thoughts v1 — refreshed {datetime.now().strftime('%Y-%m-%d %H:%M')}</footer>
+<footer>Ember 🦞 × Intrusive Thoughts v2 — refreshed {datetime.now().strftime('%Y-%m-%d %H:%M')}</footer>
 </body>
 </html>"""
 

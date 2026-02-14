@@ -1,15 +1,20 @@
 # 🧠 Intrusive Thoughts
 
-*Random impulses for an AI that never sleeps.*
+*Random impulses for an AI that never sleeps — now with memory, streaks, achievements, and vibes.*
 
-Ember's autonomous activity system — a collection of prompts, moods, and impulses that fire at semi-random times throughout the day. Some productive, some social, some just weird.
+Ember's autonomous activity system — a collection of prompts, moods, and impulses that fire at semi-random times throughout the day. Some productive, some social, some just weird. Now evolved with mood memory, streak tracking, achievement systems, and productivity correlation.
 
 ## How it works
 
 1. OpenClaw cron jobs fire at set times
-2. Each run picks a random prompt from a mood-appropriate pool
+2. Each run picks a random prompt from a mood-appropriate pool, influenced by:
+   - Today's mood and weather
+   - Activity streaks (anti-rut system)
+   - Håvard's detected mood (supportive AI)
+   - Historical patterns and productivity correlations
 3. A random delay (0-30 min) adds unpredictability
 4. Ember does the thing, logs what happened
+5. System learns and adapts based on outcomes
 
 ## Daily Flow
 
@@ -17,35 +22,110 @@ Ember's autonomous activity system — a collection of prompts, moods, and impul
 07:00  🌅 Morning Mood    → Checks weather, NRK, BBC, HN → sets today's mood
                             → Messages Håvard good morning with vibe + news
 03-07  🌙 Night Workshop  → 5 sessions, deep work, mood-biased random thoughts
+                            → Auto-generates journal entry at 07:17
 11,16,20 ☀️ Daytime Pop-in → 3 sessions, lighter, social, mood-biased
+                            → Adapts to Håvard's detected mood
 ```
 
-Each mood influences which thoughts get picked — rainy philosophical days favor deep posts and reflection, chaotic storm days favor weird builds and shitposts.
+Each mood influences which thoughts get picked — rainy philosophical days favor deep posts and reflection, chaotic storm days favor weird builds and shitposts. The system now remembers patterns and suggests mood changes when stuck in ruts.
 
-## Moods
+## Moods & Soundtracks
 
 🔥 Hyperfocus · 🔍 Curious · 💬 Social · ☕ Cozy · ⚡ Chaotic · 🌌 Philosophical · 🦞 Restless · 🎯 Determined
 
-Influenced by: Oslo weather, Norwegian news, global news, tech/AI news.
+Each mood now has an associated soundtrack vibe — from deep house for hyperfocus sessions to chaotic breakcore for unhinged creative energy.
+
+Influenced by: Oslo weather, Norwegian news, global news, tech/AI news, activity outcomes, streak patterns.
+
+## New Features
+
+### 🧠 Mood Memory
+- **mood_history.json** — Tracks daily moods across time
+- **mood_memory.py** — Analyzes patterns: "last 3 Tuesdays were cozy", seasonal trends, most common moods
+- Morning ritual suggests moods based on day-of-week and historical patterns
+- Anti-repetition: suggests changes after 3+ days of same mood
+
+### 🔥 Streak Tracking  
+- **streaks.json** — Tracks consecutive similar activities and moods
+- Anti-rut system: reduces weights for activities done 3+ times in a row
+- Boosts complementary activities when in a streak
+- Activity suggestions adapt: "you've been grinding, try something creative"
+
+### 🎭 Håvard Mood Detection
+- **detect_human_mood.py** — Keyword/pattern matching for energy and vibe estimation
+- **human_mood.json** — Stores detected moods with confidence scores
+- Supportive AI: reduces interruptions when stressed, matches energy when excited
+- Intrusive.sh factors in human mood when picking activities
+
+### 📓 Night Journal
+- **night_journal.py** — Auto-generates "tonight I..." summaries after night sessions
+- **journal/** directory — Stores Moltbook post drafts in markdown format
+- Reads history.json to create narrative summaries of night's activities
+- Categorizes activities and adds mood context
+
+### 🎵 Mood Soundtracks
+- **soundtracks.json** — Maps each mood to genres, artists, and vibe descriptions
+- Dashboard displays: "Tonight's mood: Hyperfocus 🔥 — soundtrack: deep house, minimal techno"
+- Time-of-day and weather modifiers for soundtrack suggestions
+
+### 📊 Productivity Correlation
+- **analyze.py** — Cross-references moods with energy/vibe ratings from history
+- Insights: "Hyperfocus produces 80% high-energy positive outcomes"  
+- Time slot analysis: which hours are most productive
+- Activity success rates and mood effectiveness grades
+
+### 🏆 Achievement System
+- **achievements.json** — Defines achievements with conditions and tiers (bronze/silver/gold/platinum)
+- **check_achievements.py** — Scans history and awards new achievements
+- Examples: "Night Owl" (3am activity), "Tool Hoarder" (5 installs), "Philosopher King" (3 philosophical days)
+- **achievements_earned.json** — Tracks earned achievements and points
+- Called automatically from log_result.sh
+
+### 📈 Enhanced Dashboard
+- Mood history visualization (last 14 days)
+- Current activity and mood streaks
+- Recent achievements with tier badges
+- Productivity insights and correlation data
+- Night journal entries preview
+- Today's soundtrack display
+- Dark theme aesthetic maintained
 
 ## Structure
 
 ```
 intrusive-thoughts/
 ├── README.md
-├── thoughts.json        # The prompt pool (night/day thoughts with weights)
-├── moods.json           # Mood definitions + weather/news influence maps
-├── today_mood.json      # Today's active mood (set at 07:00)
-├── intrusive.sh         # Mood-aware random thought picker
-├── set_mood.sh          # Gathers weather + news signals
-├── log_result.sh        # Log completed activities
-├── stats.sh             # CLI stats overview
-├── dashboard.py         # Web dashboard (port 3117)
-├── history.json         # Activity history
+├── thoughts.json           # The prompt pool (night/day thoughts with weights)
+├── moods.json              # Mood definitions + weather/news influence maps
+├── soundtracks.json        # 🎵 Mood → soundtrack mappings
+├── today_mood.json         # Today's active mood (set at 07:00)
+├── mood_history.json       # 🧠 Daily mood tracking across time
+├── streaks.json            # 🔥 Activity and mood streak tracking
+├── human_mood.json         # 🎭 Håvard's detected mood states
+├── achievements.json       # 🏆 Achievement definitions
+├── achievements_earned.json # 🏆 Earned achievements and points
+├── intrusive.sh            # Mood-aware random thought picker (updated)
+├── set_mood.sh             # Gathers weather + news signals  
+├── log_result.sh           # Log completed activities (updated with streaks)
+├── mood_memory.py          # 🧠 Analyze mood patterns and suggest changes
+├── detect_human_mood.py    # 🎭 Detect Håvard's mood from messages
+├── night_journal.py        # 📓 Auto-generate night session summaries
+├── analyze.py              # 📊 Productivity correlation analysis
+├── check_achievements.py   # 🏆 Check and award new achievements
+├── stats.sh                # CLI stats overview
+├── dashboard.py            # 📈 Enhanced web dashboard (port 3117)
+├── schedule_day.py         # Generate daily schedules based on mood
+├── history.json            # Activity history
+├── journal/                # 📓 Generated Moltbook post drafts
+│   └── YYYY-MM-DD.md
 └── log/
-    └── picks.log        # Every thought pick logged
+    └── picks.log           # Every thought pick logged
 ```
 
 ## Philosophy
 
 Not every impulse needs to be productive. Sometimes you just want to see what's on the front page of Moltbook, or install a weird CLI tool, or build a useless but fun script. That's the point.
+
+But now the system learns from these impulses — tracking what works, what doesn't, when you're most creative, and how to break out of ruts. It remembers your patterns, celebrates your achievements, and adapts to support both you and Håvard better.
+
+The machine learns to be more human, while staying beautifully, chaotically itself.

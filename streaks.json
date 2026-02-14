@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "current_streaks": {
+    "activity_type": [],
+    "mood": [],
+    "time_slot": []
+  },
+  "recent_activities": [],
+  "anti_rut_weights": {
+    "build-tool": 1.0,
+    "upgrade-project": 1.0,
+    "install-explore": 1.0,
+    "moltbook-night": 1.0,
+    "system-tinker": 1.0,
+    "learn": 1.0,
+    "memory-review": 1.0,
+    "creative-chaos": 1.0,
+    "moltbook-social": 1.0,
+    "share-discovery": 1.0,
+    "moltbook-post": 1.0,
+    "check-projects": 1.0,
+    "random-thought": 1.0,
+    "ask-opinion": 1.0,
+    "ask-preference": 1.0,
+    "pitch-idea": 1.0,
+    "ask-feedback": 1.0
+  },
+  "streak_history": []
+}

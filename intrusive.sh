@@ -11,7 +11,7 @@ mkdir -p "$LOG_DIR"
 
 MOOD="${1:-day}"
 
-# Pick a weighted random thought, influenced by today's mood
+# Pick a weighted random thought, influenced by today's mood and streak weights
 PROMPT=$(python3 -c "
 import json, random, sys
 
@@ -31,24 +31,68 @@ try:
 except:
     pass
 
+# Load streak weights (anti-rut system)
+streak_weights = {}
+try:
+    with open('$SCRIPT_DIR/streaks.json') as f:
+        streaks = json.load(f)
+        streak_weights = streaks.get('anti_rut_weights', {})
+except:
+    pass
+
+# Load human mood for supportive adjustments
+human_mood = None
+try:
+    with open('$SCRIPT_DIR/human_mood.json') as f:
+        human_data = json.load(f)
+        human_mood = human_data.get('current')
+except:
+    pass
+
 # Build weighted pool
 pool = []
 for t in mood_data['thoughts']:
-    weight = t.get('weight', 1)
+    weight = float(t.get('weight', 1))
+    thought_id = t['id']
     
     # Apply mood bias if we have a mood set
     if today_mood:
         boosted = today_mood.get('boosted_traits', [])
         dampened = today_mood.get('dampened_traits', [])
-        thought_id = t['id']
         
         # Check if this thought aligns with boosted/dampened traits
         if thought_id in boosted:
-            weight = int(weight * 1.8)
+            weight *= 1.8
         elif thought_id in dampened:
-            weight = max(1, weight // 2)
+            weight = max(0.2, weight * 0.5)
     
-    pool.extend([t] * weight)
+    # Apply anti-rut weights (streak-based adjustments)
+    if thought_id in streak_weights:
+        weight *= streak_weights[thought_id]
+    
+    # Apply human mood influence
+    if human_mood and human_mood.get('confidence', 0) > 0.4:
+        h_mood = human_mood.get('mood', 'neutral')
+        h_energy = human_mood.get('energy', 'neutral')
+        h_vibe = human_mood.get('vibe', 'neutral')
+        
+        # Supportive adjustments based on Håvard's detected mood
+        if h_mood == 'stressed' and thought_id in ['random-thought', 'ask-opinion', 'ask-preference']:
+            weight *= 0.5  # Don't bother him when stressed
+        elif h_mood == 'excited' and thought_id in ['share-discovery', 'pitch-idea', 'moltbook-post']:
+            weight *= 1.5  # Match his energy
+        elif h_mood == 'frustrated' and thought_id in ['ask-feedback', 'random-thought']:
+            weight *= 0.3  # Give him space
+        elif h_mood == 'curious' and thought_id in ['share-discovery', 'ask-opinion', 'learn']:
+            weight *= 1.4  # Feed his curiosity
+        elif h_mood == 'focused' and thought_id in ['random-thought', 'ask-opinion']:
+            weight *= 0.4  # Don't interrupt flow
+        elif h_mood == 'happy' and thought_id in ['moltbook-social', 'share-discovery', 'creative-chaos']:
+            weight *= 1.3  # Amplify good vibes
+    
+    # Convert back to int for pool generation
+    final_weight = max(1, int(weight * 10))  # Scale up for precision
+    pool.extend([t] * final_weight)
 
 pick = random.choice(pool)
 jitter = random.randint(0, mood_data.get('jitter_seconds', mood_data.get('jitter_seconds', 1200)))

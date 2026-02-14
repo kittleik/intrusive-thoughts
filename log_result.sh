@@ -127,4 +127,102 @@ else:
     print("No mood file set — logged activity only")
 
 print(f"Logged: {entry['thought_id']} ({entry['mood']}) - {entry['summary'][:60]}")
+
+# === STREAK TRACKING ===
+streaks_file = '$SCRIPT_DIR/streaks.json'
+try:
+    with open(streaks_file) as f:
+        streaks = json.load(f)
+except:
+    streaks = {
+        'version': 1,
+        'current_streaks': {'activity_type': [], 'mood': [], 'time_slot': []},
+        'recent_activities': [],
+        'anti_rut_weights': {},
+        'streak_history': []
+    }
+
+# Add this activity to recent list
+current_hour = datetime.fromisoformat('$TIMESTAMP'.replace('Z', '+00:00')).hour
+streaks['recent_activities'].append({
+    'thought_id': '$THOUGHT_ID',
+    'mood': '$MOOD', 
+    'timestamp': '$TIMESTAMP',
+    'hour': current_hour,
+    'energy': '$ENERGY',
+    'vibe': '$VIBE'
+})
+
+# Keep only last 20 activities
+streaks['recent_activities'] = streaks['recent_activities'][-20:]
+
+# Analyze activity type streaks
+recent_thoughts = [a['thought_id'] for a in streaks['recent_activities'][-5:]]
+activity_streak = []
+for thought in reversed(recent_thoughts):
+    if activity_streak and activity_streak[0] != thought:
+        break
+    if not activity_streak or activity_streak[0] == thought:
+        activity_streak.insert(0, thought)
+
+# Analyze mood streaks  
+recent_moods = [a['mood'] for a in streaks['recent_activities'][-5:]]
+mood_streak = []
+for mood in reversed(recent_moods):
+    if mood_streak and mood_streak[0] != mood:
+        break
+    if not mood_streak or mood_streak[0] == mood:
+        mood_streak.insert(0, mood)
+
+streaks['current_streaks']['activity_type'] = activity_streak
+streaks['current_streaks']['mood'] = mood_streak
+
+# Update anti-rut weights
+weights = streaks.get('anti_rut_weights', {})
+current_thought = '$THOUGHT_ID'
+
+# If we're in a streak of 3+, reduce weight for the repeated activity
+if len(activity_streak) >= 3 and activity_streak[0] == current_thought:
+    weights[current_thought] = max(0.3, weights.get(current_thought, 1.0) * 0.7)
+    streak_msg = f"Activity streak detected: {activity_streak[0]} x{len(activity_streak)} — reducing weight"
+    print(streak_msg)
+    
+    # Boost complementary activities
+    complements = {
+        'build-tool': ['moltbook-post', 'creative-chaos', 'share-discovery'],
+        'upgrade-project': ['learn', 'memory-review', 'ask-opinion'],
+        'moltbook-night': ['build-tool', 'system-tinker', 'learn'],
+        'system-tinker': ['moltbook-social', 'creative-chaos'],
+        'learn': ['build-tool', 'pitch-idea', 'upgrade-project'],
+        'memory-review': ['moltbook-post', 'ask-preference']
+    }
+    
+    for comp in complements.get(current_thought, []):
+        weights[comp] = min(2.0, weights.get(comp, 1.0) * 1.3)
+
+# Recovery — if haven't done an activity in a while, boost it
+activity_counts = {}
+for a in streaks['recent_activities'][-10:]:
+    activity_counts[a['thought_id']] = activity_counts.get(a['thought_id'], 0) + 1
+
+for thought_id in ['build-tool', 'upgrade-project', 'moltbook-post', 'creative-chaos']:
+    if activity_counts.get(thought_id, 0) == 0:
+        weights[thought_id] = min(2.0, weights.get(thought_id, 1.0) * 1.2)
+
+streaks['anti_rut_weights'] = weights
+
+# Save streaks
+with open(streaks_file, 'w') as f:
+    json.dump(streaks, f, indent=2)
+
+# Check for achievements (if the script exists)
+import subprocess
+import os
+achievements_script = '$SCRIPT_DIR/check_achievements.py'
+if os.path.exists(achievements_script):
+    try:
+        subprocess.run(['python3', achievements_script], cwd='$SCRIPT_DIR', timeout=10)
+    except:
+        pass
+
 PYEOF
