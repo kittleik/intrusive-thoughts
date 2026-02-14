@@ -239,6 +239,117 @@ The trust system automatically:
 
 Use `from trust_system import TrustSystem` in your Python code to integrate trust checks into autonomous behaviors.
 
+## Self-Evolution System
+
+The **Self-Evolution System** makes your AI agent truly adaptive by observing its own behavior patterns and automatically adjusting weights, schedules, and strategies based on what actually works.
+
+### How It Works
+
+The system continuously analyzes historical data to discover patterns:
+- **Pattern Recognition**: Which moods produce highest energy/vibe ratings
+- **Temporal Analysis**: What times of day are most productive per activity type
+- **Mood-Thought Synergy**: Which thought types succeed most often per mood
+- **Anti-Rut Detection**: Flags repetitive patterns that reduce effectiveness
+- **Value Optimization**: Scores actions across multiple dimensions (productivity, creativity, social, growth, wellbeing)
+
+### Core Value Dimensions
+
+The system optimizes for a balanced set of values:
+```python
+VALUE_DIMENSIONS = {
+    "productivity": 0.3,    # tasks completed, code written
+    "creativity": 0.2,      # novel actions, diverse activities
+    "social": 0.2,          # engagement quality, community participation
+    "growth": 0.15,         # new skills, learning activities
+    "wellbeing": 0.15       # streak maintenance, balanced moods
+}
+```
+
+Each activity gets scored across these dimensions, and the system learns which behaviors maximize the weighted combination.
+
+### Auto-Adjustments
+
+Based on discovered patterns, the system automatically:
+- **Mood Weights**: Boosts high-performing moods, reduces ineffective ones in `evolution/learned_weights.json`
+- **Thought Preferences**: Adjusts thought weights based on success rates per mood context
+- **Schedule Optimization**: Recommends time-of-day adjustments for different activity types
+- **Rut Prevention**: Detects and warns about overly repetitive patterns
+
+### Meta-Cognition Features
+
+The system includes self-reflection capabilities:
+- **`reflect()`** — Generates text summary of recent patterns and learnings
+- **`diagnose()`** — Identifies problems (low energy trends, repeated failures, mood stagnation)  
+- **`prescribe()`** — Suggests specific changes based on diagnosis
+
+### CLI Usage
+
+The evolution system has a convenient CLI interface:
+
+```bash
+# Run full evolution cycle (analyze → learn → adjust)
+./evolve_cli.sh run
+
+# Generate self-reflection summary
+./evolve_cli.sh reflect
+
+# Identify current issues
+./evolve_cli.sh diagnose
+
+# Get actionable recommendations
+./evolve_cli.sh recommendations
+
+# View learned weight adjustments
+./evolve_cli.sh weights
+
+# Show evolution statistics
+./evolve_cli.sh stats
+
+# View evolution history
+./evolve_cli.sh history
+
+# Quick status check
+./evolve_cli.sh status
+```
+
+### Data Model
+
+The system stores its learnings in structured JSON:
+```python
+# evolution/learnings.json
+{
+  "version": 1,
+  "last_evolution": "2024-02-14T10:30:00Z",
+  "patterns": [
+    {
+      "id": "uuid",
+      "discovered": "2024-02-14T10:30:00Z",
+      "type": "mood_correlation",
+      "description": "Hyperfocus mood + morning = highest productivity",
+      "confidence": 0.85,
+      "evidence_count": 15,
+      "actionable": true,
+      "recommendation": "Prefer Hyperfocus for morning sessions"
+    }
+  ],
+  "weight_adjustments": {
+    "moods": {"hyperfocus": 1.2, "chaotic": 0.8},
+    "thoughts": {"build-tool": 1.1, "random-thought": 0.9}
+  },
+  "evolution_history": [...]
+}
+```
+
+### Integration Points
+
+The self-evolution system integrates seamlessly:
+- **Morning Ritual**: Checks learned weights when selecting daily mood
+- **Night Workshop**: Runs `evolve()` cycle periodically to update learnings
+- **Thought Selection**: Uses learned weights to bias random selection
+- **Dashboard**: Displays evolution insights and pattern discoveries
+
+This creates a true feedback loop where the agent continuously improves its own behavior based on actual outcomes rather than static configuration.
+
 ## Customizing
 
 ### Add your own thoughts
