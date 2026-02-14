@@ -93,7 +93,7 @@ function gracefulShutdown() {
 // Start server
 const startServer = () => {
   try {
-    server = app.listen(PORT, 'localhost', () => {
+    server = app.listen(PORT, '0.0.0.0', () => {
       const version = getVersion();
       console.log(`🧠 Starting Intrusive Thoughts Dashboard (TypeScript) v${version} on http://localhost:${PORT}`);
       console.log(`📁 Data directory: ${getDataDir()}`);
