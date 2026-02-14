@@ -265,7 +265,7 @@ def build_html():
 
 <div class="section">
   <h2>🚦 System Health</h2>
-  <div id="health-status">Loading v1.0 systems...</div>
+  <div id="health-status">Loading systems...</div>
   <script>
     fetch('/api/health').then(r=>r.json()).then(d=>{{
       let html = '<div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));">';
@@ -283,13 +283,13 @@ def build_html():
   </script>
 </div>
 
-<footer>{get_agent_name()} {get_agent_emoji()} × Intrusive Thoughts v1.0 — refreshed {datetime.now().strftime('%Y-%m-%d %H:%M')}</footer>
+<footer>{get_agent_name()} {get_agent_emoji()} × Intrusive Thoughts v0.1.2 — refreshed {datetime.now().strftime('%Y-%m-%d %H:%M')}</footer>
 </body>
 </html>"""
 
 
 def load_v1_systems():
-    """Load data from all v1.0 systems for dashboard display."""
+    """Load data from all systems for dashboard display."""
     systems = {}
     try:
         from health_monitor import get_dashboard_data

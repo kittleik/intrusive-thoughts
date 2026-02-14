@@ -70,7 +70,7 @@ def _default_status():
     return {
         "overall": Status.GREEN,
         "last_updated": _now_iso(),
-        "version": "1.0.0",
+        "version": "0.1.2",
         "uptime_since": _now_iso(),
         "components": {
             "mood_system": {"status": Status.GREEN, "message": "OK", "last_check": None},
