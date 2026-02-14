@@ -1,14 +1,27 @@
-# Personal config (use config.example.json as template)
+# Personal config — NEVER commit (contains API keys, names, etc)
 config.json
 
 # Runtime data (generated during operation)
 today_mood.json
 today_schedule.json
 human_mood.json
+history.json
+mood_history.json
+streaks.json
+achievements_earned.json
+mood_history_backup.json
 log/picks.log
 journal/*.md
 
-# Keep structure
+# Runtime data directories (created by setup.sh)
+health/
+memory_store/
+wal/
+buffer/
+evolution/
+trust_store/
+
+# Keep directory structure
 !log/.gitkeep
 !journal/.gitkeep
 
@@ -17,11 +30,6 @@ __pycache__/
 *.pyc
 .venv/
 
-# Runtime data (created by setup.sh)
-health/
-memory_store/
-wal/
-buffer/
-evolution/
-trust_store/
-config.json
+# OS
+.DS_Store
+Thumbs.db
