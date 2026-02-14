@@ -49,6 +49,11 @@ Moods are influenced by **weather**, **news headlines**, and **activity outcomes
 - **Random jitter** on all timings for unpredictability
 
 ### Advanced
+- **🧠 Multi-Store Memory** — episodic, semantic, procedural memory with decay & consolidation
+- **🚀 Proactive Agent Protocol** — Write-Ahead Log (WAL) + Working Buffer for context management
+- **🔒 Trust & Escalation** — learns when to ask vs act autonomously, grows trust over time
+- **🧬 Self-Evolution** — auto-adjusts behavior based on outcome patterns
+- **🚦 Health Monitor** — traffic light status, heartbeat tracking, incident logging
 - **🧠 Mood Memory** — tracks patterns across days/weeks/seasons
 - **🔄 Streak Detection** — anti-rut system, forces variety after repetition
 - **🎭 Human Mood Detection** — adapts behavior when your human is stressed/excited
@@ -57,18 +62,25 @@ Moods are influenced by **weather**, **news headlines**, and **activity outcomes
 - **📊 Productivity Analysis** — which moods produce the best work
 - **🏆 Achievement System** — gamified badges for milestones
 - **📈 Web Dashboard** — dark-themed UI on port 3117
+- **🧠 Multi-Store Memory System** — sophisticated episodic, semantic, procedural & working memory with forgetting curves
 
 ## Quick Start
 
-### 1. Copy and configure
+### 1. Run setup
 
 ```bash
-cp config.example.json config.json
-# Edit config.json with your details:
-# - human.name, human.timezone
-# - agent.name, agent.emoji
-# - integrations (Moltbook, Telegram, weather location)
+./setup.sh
 ```
+
+This interactive wizard will:
+- Check dependencies (Python 3.8+)
+- Generate `config.json` from your answers
+- Create all data directories
+- Initialize data files
+- Validate the installation
+- Print cron job instructions
+
+For automated/CI setups: `./setup.sh --non-interactive`
 
 ### 2. Install as OpenClaw skill
 
@@ -129,6 +141,10 @@ intrusive-thoughts/
 ├── analyze.py              # 📊 Productivity correlation analysis
 ├── check_achievements.py   # 🏆 Achievement checker
 ├── dashboard.py            # 📈 Web dashboard (port 3117)
+├── memory_system.py        # 🧠 Advanced multi-store memory system
+├── memory_cli.sh           # 🧠 Memory system CLI interface
+├── trust_system.py         # 🔒 Trust & escalation system
+├── trust_cli.sh            # 🔒 Trust system CLI interface
 ├── stats.sh                # 📊 CLI stats overview
 ├── install.sh              # 🚀 Automated installer
 │
@@ -140,8 +156,83 @@ intrusive-thoughts/
 ├── today_schedule.json     # Runtime: today's pop-in times
 ├── human_mood.json         # Runtime: detected human mood
 ├── log/                    # Runtime: pick logs
-└── journal/                # Runtime: night journal entries
+├── journal/                # Runtime: night journal entries
+└── trust_store/            # Runtime: trust system data
 ```
+
+## Trust & Escalation System
+
+The **Trust & Escalation System** helps your AI learn when to act autonomously vs ask for permission. It tracks action outcomes and adjusts trust levels over time, integrating with the mood system for context-aware decision making.
+
+### How It Works
+
+The system tracks actions across categories and learns from outcomes:
+- **Success** → Trust increases (harder to gain at high levels)
+- **Failure** → Trust decreases (proportional to current level) 
+- **Escalation approved** → Small trust boost
+- **Escalation rejected** → Trust penalty + pattern learning
+- **Time decay** → Trust slowly drifts toward neutral (0.5)
+
+### Risk Levels & Categories
+
+**Risk Levels:**
+- **Low**: File reads, web searches, memory operations → usually auto-proceed
+- **Medium**: File writes, tool installs, API calls → check trust level
+- **High**: External messaging, system changes, deletions → conservative
+- **Critical**: Public posts, financial operations → almost always escalate
+
+**Action Categories:**
+- `file_operations` (0.8 default trust)
+- `messaging` (0.6 default trust) 
+- `external_api` (0.3 default trust)
+- `system_changes` (0.4 default trust)
+- `web_operations` (0.7 default trust)
+- `code_execution` (0.5 default trust)
+
+### Mood Integration
+
+Your current mood affects risk tolerance:
+- **Hyperfocus/Determined**: Higher risk tolerance (+10-15%)
+- **Chaotic**: Lower risk tolerance (-15% — might regret impulsive actions)
+- **Restless**: Lower risk tolerance (-10% — rushing leads to mistakes)
+- **Cozy/Social/Curious**: Standard tolerance
+
+### CLI Usage
+
+The trust system includes a convenient CLI:
+
+```bash
+# Check if an action should be escalated
+./trust_cli.sh check "send tweet about project" --category messaging --risk high
+
+# Log successful actions
+./trust_cli.sh log-success "updated config file" --category file_operations
+
+# Log failures
+./trust_cli.sh log-failure "API timeout" --category external_api --details "network error"
+
+# Log escalations with human responses
+./trust_cli.sh log-escalation "delete old logs" --category system_changes --response "yes, go ahead"
+
+# View trust statistics
+./trust_cli.sh stats
+
+# View action history
+./trust_cli.sh history --limit 30
+
+# Manual trust adjustments
+./trust_cli.sh adjust --category messaging --delta +0.1 --reason "human feedback: more autonomous messaging OK"
+```
+
+### Integration with Other Systems
+
+The trust system automatically:
+- Reads mood from `today_mood.json` for risk tolerance adjustment
+- Stores data in `trust_store/trust_data.json` 
+- Provides Python API for integration with other components
+- Includes time-based decay to prevent stagnation
+
+Use `from trust_system import TrustSystem` in your Python code to integrate trust checks into autonomous behaviors.
 
 ## Customizing
 
@@ -165,6 +256,46 @@ Edit `moods.json` to add new mood types with weather/news influence maps.
 ### Add achievements
 
 Edit `achievements.json` with custom milestones for your agent.
+
+### Memory System
+
+The advanced multi-store memory system provides sophisticated memory capabilities inspired by cognitive science:
+
+**Store Types:**
+- **Episodic**: Events with emotional context and decay (Ebbinghaus forgetting curve)
+- **Semantic**: Facts and knowledge extracted from repeated patterns
+- **Procedural**: Action → outcome mappings for learned behaviors  
+- **Working**: Current context buffer with attention mechanism
+
+**CLI Usage:**
+```bash
+# Store new memories
+./memory_cli.sh encode "Learned Python decorators" --emotion happy --importance 0.8
+
+# Search memories semantically
+./memory_cli.sh recall "Python learning" --type episodic --limit 5
+
+# Run consolidation (typically during night workshops)
+./memory_cli.sh consolidate
+
+# Analyze memory patterns
+./memory_cli.sh reflect
+
+# View system statistics
+./memory_cli.sh stats
+
+# Clean up low-importance memories
+./memory_cli.sh forget --threshold 0.2
+```
+
+**Integration Points:**
+- Night journal calls `consolidate()` to process daily memories
+- Mood changes get encoded as episodic memories
+- Achievement unlocks are stored with high importance
+- Activity outcomes feed procedural learning
+- Dashboard displays memory statistics
+
+Memory data is stored in `memory_store/` with automatic decay, consolidation, and semantic pattern extraction.
 
 ## The Philosophy
 
