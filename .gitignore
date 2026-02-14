@@ -16,3 +16,12 @@ journal/*.md
 __pycache__/
 *.pyc
 .venv/
+
+# Runtime data (created by setup.sh)
+health/
+memory_store/
+wal/
+buffer/
+evolution/
+trust_store/
+config.json
