@@ -8,6 +8,14 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
 # Handle subcommands
 case "${1:-}" in
+    --version|-v|version)
+        if [[ -f "$SCRIPT_DIR/VERSION" ]]; then
+            echo "Intrusive Thoughts v$(cat "$SCRIPT_DIR/VERSION")"
+        else
+            echo "Intrusive Thoughts (version unknown)"
+        fi
+        exit 0
+        ;;
     create-preset)
         exec "$SCRIPT_DIR/create_preset.sh"
         ;;
@@ -40,6 +48,180 @@ case "${1:-}" in
         ;;
     why)
         exec python3 "$SCRIPT_DIR/decision_trace.py" "${2:-}"
+        ;;
+    export-state)
+        python3 -c "
+import json
+import sys
+from datetime import datetime
+from pathlib import Path
+from config import get_data_dir, get_file_path
+
+def load_json_safe(filepath, default=None):
+    \"\"\"Safely load JSON file, return default if fails.\"\"\"
+    try:
+        if filepath.exists():
+            return json.loads(filepath.read_text())
+    except:
+        pass
+    return default if default is not None else {}
+
+data_dir = get_data_dir()
+
+# Load current mood
+mood = load_json_safe(get_file_path('today_mood.json'), {})
+
+# Load streaks
+streaks = load_json_safe(get_file_path('streaks.json'), {})
+
+# Load recent history (last 5 entries)
+history = load_json_safe(get_file_path('history.json'), [])
+recent_history = history[-5:] if len(history) > 5 else history
+
+# Calculate trust score (if trust system exists)
+trust_score = 0
+trust_store_dir = data_dir / 'trust_store'
+if trust_store_dir.exists():
+    trust_files = list(trust_store_dir.glob('*.json'))
+    trust_score = len(trust_files)
+
+# Calculate memory stats
+memory_stats = {}
+memory_store_dir = data_dir / 'memory_store'
+if memory_store_dir.exists():
+    memory_files = list(memory_store_dir.glob('*.json'))
+    memory_stats['total_memories'] = len(memory_files)
+    total_size = sum(f.stat().st_size for f in memory_files)
+    memory_stats['total_size_bytes'] = total_size
+
+# Load achievements
+achievements = load_json_safe(get_file_path('achievements_earned.json'), {})
+if isinstance(achievements, dict):
+    earned_list = achievements.get('earned', [])
+    earned_count = len(earned_list)
+    total_points = sum(a.get('points', 0) for a in earned_list if isinstance(a, dict))
+elif isinstance(achievements, list):
+    earned_count = len(achievements)  
+    total_points = sum(a.get('points', 0) for a in achievements if isinstance(a, dict))
+else:
+    earned_count = 0
+    total_points = 0
+
+# Load active schedule if exists
+schedule = load_json_safe(get_file_path('today_schedule.json'))
+
+# Read version
+version = 'unknown'
+version_file = Path('$SCRIPT_DIR/VERSION')
+if version_file.exists():
+    version = version_file.read_text().strip()
+
+# Build export data
+export_data = {
+    'version': version,
+    'exported_at': datetime.now().isoformat(),
+    'mood': mood,
+    'streaks': streaks,
+    'recent_history': recent_history,
+    'trust_score': trust_score,
+    'memory_stats': memory_stats,
+    'achievements': {
+        'earned_count': earned_count,
+        'total_points': total_points
+    },
+    'active_schedule': schedule
+}
+
+print(json.dumps(export_data, indent=2))
+"
+        exit 0
+        ;;
+    import-state)
+        if [[ -z "$2" ]]; then
+            echo "Usage: intrusive.sh import-state <file>"
+            echo "Imports agent state from a previously exported JSON file"
+            exit 1
+        fi
+        
+        if [[ ! -f "$2" ]]; then
+            echo "Error: File '$2' does not exist"
+            exit 1
+        fi
+        
+        python3 -c "
+import json
+import sys
+from pathlib import Path
+from config import get_file_path
+
+def save_json_safe(filepath, data):
+    \"\"\"Safely save JSON data to file.\"\"\"
+    try:
+        filepath.parent.mkdir(parents=True, exist_ok=True)
+        filepath.write_text(json.dumps(data, indent=2))
+        return True
+    except Exception as e:
+        print(f'Error saving {filepath}: {e}', file=sys.stderr)
+        return False
+
+# Load import data
+import_file = Path('$2')
+try:
+    import_data = json.loads(import_file.read_text())
+except Exception as e:
+    print(f'Error reading import file: {e}', file=sys.stderr)
+    sys.exit(1)
+
+restored = []
+failed = []
+
+# Restore mood
+if 'mood' in import_data and import_data['mood']:
+    if save_json_safe(get_file_path('today_mood.json'), import_data['mood']):
+        restored.append('mood')
+    else:
+        failed.append('mood')
+
+# Restore streaks  
+if 'streaks' in import_data and import_data['streaks']:
+    if save_json_safe(get_file_path('streaks.json'), import_data['streaks']):
+        restored.append('streaks')
+    else:
+        failed.append('streaks')
+
+print('🔄 State Import Summary')
+print('=' * 30)
+print(f'Source: {import_file}')
+print(f'Exported: {import_data.get(\"exported_at\", \"unknown\")}')
+print(f'Version: {import_data.get(\"version\", \"unknown\")}')
+print()
+
+if restored:
+    print('✅ Successfully restored:')
+    for item in restored:
+        print(f'  • {item}')
+
+if failed:
+    print('❌ Failed to restore:')
+    for item in failed:
+        print(f'  • {item}')
+
+if not restored and not failed:
+    print('ℹ️  No restorable data found in import file')
+
+print()
+print('📊 Import Statistics:')
+if 'trust_score' in import_data:
+    print(f'  Trust score: {import_data[\"trust_score\"]}')
+if 'achievements' in import_data:
+    ach = import_data['achievements']
+    print(f'  Achievements: {ach.get(\"earned_count\", 0)} earned, {ach.get(\"total_points\", 0)} points')
+if 'memory_stats' in import_data:
+    mem = import_data['memory_stats']
+    print(f'  Memory: {mem.get(\"total_memories\", 0)} memories, {mem.get(\"total_size_bytes\", 0)} bytes')
+print(f'  Recent history: {len(import_data.get(\"recent_history\", []))} entries')
+"
+        exit 0
         ;;
     audit|--audit)
         echo "🔍 Security Audit - Intrusive Thoughts"
@@ -75,11 +257,16 @@ case "${1:-}" in
         echo "  intrusive.sh audit               Show security audit information"
         echo "  intrusive.sh genuineness         Show genuineness report"
         echo "  intrusive.sh genuineness --json  Genuineness report as JSON"
+        echo "  intrusive.sh --version           Show version information"
         echo ""
         echo "Self-awareness commands:"
         echo "  intrusive.sh explain <system>    Explain how a subsystem works"
         echo "  intrusive.sh introspect          Full state dump as JSON"
         echo "  intrusive.sh why [action-id]     Trace decision path for recent action"
+        echo ""
+        echo "Context survival:"
+        echo "  intrusive.sh export-state        Export agent state as JSON"
+        echo "  intrusive.sh import-state <file> Import and restore agent state"
         echo ""
         echo "  intrusive.sh help                Show this help"
         echo ""
