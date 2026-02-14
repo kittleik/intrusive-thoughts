@@ -1,6 +1,8 @@
 import express from 'express';
 import { exec } from 'child_process';
 import { promisify } from 'util';
+import fs from 'fs';
+import path from 'path';
 
 function countThoughts(data: any): number {
   if (data?.thoughts && typeof data.thoughts === 'object') return Object.keys(data.thoughts).length;
@@ -130,6 +132,17 @@ router.get('/presets', (_req, res) => {
   } catch (error) {
     console.error('Error in /api/presets:', error);
     res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// GET /api/streaks
+router.get('/streaks', (_req, res) => {
+  try {
+    const streaksPath = path.join(getDataDir(), 'streaks.json');
+    const data = fs.readFileSync(streaksPath, 'utf8');
+    res.json(JSON.parse(data));
+  } catch {
+    res.json({});
   }
 });
 

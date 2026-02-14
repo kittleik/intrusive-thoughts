@@ -464,12 +464,21 @@ async function refreshStream() {
       return;
     }
     
-    content.innerHTML = data.map(item => `
-      <div class="stream-item ${item.type}">
-        <div class="time">${item.timestamp}</div>
+    content.innerHTML = data.map(item => {
+      const time = item.timestamp ? new Date(item.timestamp).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'}) : '';
+      const moodEmojis = {hyperfocus:'🔥', curious:'🔍', social:'💬', cozy:'☕', chaotic:'⚡', philosophical:'🌌', restless:'🦞', determined:'🎯'};
+      const moodEmoji = moodEmojis[item.mood] || '🧠';
+      const typeLabels = {activity:'✅', pick:'🎲', rejection:'❌', mood_drift:'🌊'};
+      const typeLabel = typeLabels[item.type] || '•';
+      return `
+      <div class="stream-item ${item.type}" style="margin-bottom: 0.5rem; padding: 0.8rem; background: var(--border); border-radius: 6px;">
+        <div style="display: flex; justify-content: space-between; margin-bottom: 0.3rem;">
+          <span style="color: var(--accent);">${typeLabel} ${moodEmoji} ${item.mood || ''}</span>
+          <span class="time" style="color: var(--dim); font-size: 0.85rem;">${time}</span>
+        </div>
         <div class="summary">${item.summary}</div>
-      </div>
-    `).join('');
+      </div>`;
+    }).join('');
     
     showRefreshIndicator();
     updateLastUpdated();
@@ -758,16 +767,26 @@ async function loadAchievements() {
       return;
     }
     
-    content.innerHTML = earned.map(achievement => `
+    const allAch = (data.all_achievements && data.all_achievements.achievements) || {};
+    content.innerHTML = earned.map(achievement => {
+      const details = allAch[achievement.id] || {};
+      const name = details.name || achievement.id;
+      const description = details.description || achievement.context || '';
+      const tierEmojis = {bronze: '🥉', silver: '🥈', gold: '🥇', platinum: '💎'};
+      const tierEmoji = tierEmojis[details.tier] || '🏆';
+      return `
       <div style="display: flex; align-items: center; margin-bottom: 1rem; padding: 1rem; background: var(--border); border-radius: 8px;">
-        <div style="margin-right: 1rem; font-size: 1.5rem;">${achievement.tier_emoji || '🏆'}</div>
+        <div style="margin-right: 1rem; font-size: 1.5rem;">${tierEmoji}</div>
         <div>
-          <h4 style="color: var(--accent); margin-bottom: 0.2rem;">${achievement.name}</h4>
-          <p style="color: var(--dim); font-size: 0.9rem; margin-bottom: 0.2rem;">${achievement.description}</p>
-          <small style="color: var(--dim);">${achievement.points} points • ${achievement.earned_at}</small>
+          <h4 style="color: var(--accent); margin-bottom: 0.2rem;">${name}</h4>
+          <p style="color: var(--dim); font-size: 0.9rem; margin-bottom: 0.2rem;">${description}</p>
+          <small style="color: var(--dim);">${details.points || 0} points • ${new Date(achievement.earned_at).toLocaleString()}</small>
+          <small style="color: var(--dim); display: block; margin-top: 0.2rem;">📝 ${achievement.context || ''}</small>
         </div>
       </div>
-    `).join('');
+    `}).join('');
+    
+    content.innerHTML += `<div style="text-align: center; margin-top: 1rem; color: var(--accent); font-size: 1.2rem;">🏆 Total: ${data.total_points || 0} points</div>`;
   } catch (error) {
     console.error('Error loading achievements:', error);
   }
@@ -783,18 +802,31 @@ async function loadMoodTimeline() {
       el.innerHTML = '<div class="empty">No mood history yet</div>';
       return;
     }
-    el.innerHTML = data.map(e => `<div class="stream-item"><span class="time">${e.date || ''}</span> ${e.emoji || ''} ${e.mood || ''}</div>`).join('');
+    el.innerHTML = data.map(e => `
+      <div class="stream-item" style="padding: 0.4rem 0.6rem; margin-bottom: 0.3rem; background: var(--border); border-radius: 6px; display: flex; justify-content: space-between; align-items: center;">
+        <span>${e.emoji || '🧠'} <strong>${e.mood || ''}</strong> <span style="color:var(--dim)">${e.summary || e.thought_id || ''}</span></span>
+        <span style="color:var(--dim); font-size:0.85rem">${e.time || ''}</span>
+      </div>`).join('');
   } catch (e) { document.getElementById('mood-timeline').innerHTML = '<div class="empty">No mood history yet</div>'; }
 }
 
 async function loadStreaks() {
   try {
-    const response = await fetch('/api/stats');
-    const data = await response.json();
+    const response = await fetch('/api/streaks');
     const el = document.getElementById('streaks-content');
     if (!el) return;
-    if (data.streaks && Object.keys(data.streaks).length > 0) {
-      el.innerHTML = Object.entries(data.streaks).map(([k,v]) => `<div class="stream-item"><strong>${k}</strong>: ${v}</div>`).join('');
+    if (!response.ok) {
+      el.innerHTML = '<div class="empty">No streaks recorded yet</div>';
+      return;
+    }
+    const data = await response.json();
+    if (data && Object.keys(data).length > 0) {
+      el.innerHTML = Object.entries(data).map(([k,v]) => {
+        const info = typeof v === 'object' ? v : {count: v};
+        return `<div class="stream-item" style="padding: 0.5rem; margin-bottom: 0.3rem; background: var(--border); border-radius: 6px;">
+          <strong>${k}</strong>: ${info.count || v} ${info.description ? `<span style="color:var(--dim)">— ${info.description}</span>` : ''}
+        </div>`;
+      }).join('');
     } else {
       el.innerHTML = '<div class="empty">No streaks recorded yet</div>';
     }
@@ -816,6 +848,28 @@ async function loadNightData() {
   }
 }
 
+async function loadJournalList() {
+  try {
+    const response = await fetch('/api/journal/list');
+    const data = await response.json();
+    // Find the journal entries loading div (inside night workshop)
+    const containers = document.querySelectorAll('.empty');
+    containers.forEach(el => {
+      if (el.textContent.includes('Loading journal entries')) {
+        if (data && data.length > 0) {
+          el.innerHTML = data.map(j => `<div class="stream-item" style="padding:0.5rem; cursor:pointer; margin-bottom:0.3rem; background:var(--border); border-radius:6px;" onclick="loadJournal('${j}')">${j}</div>`).join('');
+        } else {
+          el.textContent = 'No journal entries yet — they generate during night workshops';
+        }
+      }
+    });
+  } catch (e) {
+    document.querySelectorAll('.empty').forEach(el => {
+      if (el.textContent.includes('Loading journal entries')) el.textContent = 'No journal entries yet';
+    });
+  }
+}
+
 // Load all the additional data
 async function loadAllData() {
   await Promise.all([
@@ -827,6 +881,7 @@ async function loadAllData() {
     loadMoodTimeline(),
     loadStreaks(),
     loadNightData(),
+    loadJournalList(),
   ]);
 }
 

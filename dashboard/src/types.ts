@@ -40,7 +40,11 @@ export interface ThoughtsData {
 export interface HistoryEntry {
   timestamp: string;
   thought: string;
+  thought_id?: string;
   mood?: string;
+  summary?: string;
+  energy?: string;
+  vibe?: string;
   completed?: boolean;
 }
 
@@ -60,7 +64,7 @@ export interface RejectionEntry {
 }
 
 export interface StreamItem {
-  type: 'pick' | 'rejection' | 'mood_drift';
+  type: 'pick' | 'rejection' | 'mood_drift' | 'activity';
   timestamp: string;
   thought_id?: string;
   mood?: string;

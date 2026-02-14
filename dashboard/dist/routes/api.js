@@ -6,6 +6,8 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = __importDefault(require("express"));
 const child_process_1 = require("child_process");
 const util_1 = require("util");
+const fs_1 = __importDefault(require("fs"));
+const path_1 = __importDefault(require("path"));
 function countThoughts(data) {
     if (data?.thoughts && typeof data.thoughts === 'object')
         return Object.keys(data.thoughts).length;
@@ -130,6 +132,17 @@ router.get('/presets', (_req, res) => {
     catch (error) {
         console.error('Error in /api/presets:', error);
         res.status(500).json({ error: 'Internal server error' });
+    }
+});
+// GET /api/streaks
+router.get('/streaks', (_req, res) => {
+    try {
+        const streaksPath = path_1.default.join((0, config_js_1.getDataDir)(), 'streaks.json');
+        const data = fs_1.default.readFileSync(streaksPath, 'utf8');
+        res.json(JSON.parse(data));
+    }
+    catch {
+        res.json({});
     }
 });
 // GET /api/schedule

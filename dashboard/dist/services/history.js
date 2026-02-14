@@ -89,6 +89,18 @@ function loadDecisions() {
 }
 function loadStreamData(limit = 50) {
     const streamItems = [];
+    // Add history entries (completed activities)
+    const history = loadHistory();
+    for (const entry of history.slice(-limit)) {
+        streamItems.push({
+            type: 'activity',
+            timestamp: entry.timestamp || '',
+            thought_id: entry.thought_id || 'unknown',
+            mood: entry.mood || 'unknown',
+            summary: entry.summary || `Completed ${entry.thought_id}`,
+            details: entry
+        });
+    }
     // Add picks
     const picks = loadPicks();
     for (const pick of picks.slice(-limit)) {
