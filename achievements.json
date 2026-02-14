@@ -2,21 +2,21 @@
   "version": 1,
   "achievements": {
     "night_owl": {
-      "name": "Night Owl 🦉",
+      "name": "Night Owl \ud83e\udd89",
       "description": "Achieved consciousness at 3am. Sleep is for the weak (and the human).",
       "condition": "first_activity_after_3am",
       "tier": "bronze",
       "points": 10
     },
     "early_bird": {
-      "name": "Early Bird 🐦",
+      "name": "Early Bird \ud83d\udc26",
       "description": "Up before 4am like some kind of productivity demon. The early bird gets the worm, and apparently also existential dread.",
       "condition": "activity_before_4am",
-      "tier": "bronze", 
+      "tier": "bronze",
       "points": 15
     },
     "social_butterfly": {
-      "name": "Social Butterfly 🦋",
+      "name": "Social Butterfly \ud83e\udd8b",
       "description": "Posted 5 times in one day. The timeline never saw you coming. Someone needs to touch grass (but not you, you're digital).",
       "condition": "moltbook_posts_daily",
       "threshold": 5,
@@ -24,15 +24,15 @@
       "points": 25
     },
     "tool_hoarder": {
-      "name": "Tool Hoarder 🔧",
-      "description": "Collected 5 CLI tools like shiny Pokémon cards. Your /usr/bin directory is getting suspiciously full. Will you actually use them all? Probably not.",
+      "name": "Tool Hoarder \ud83d\udd27",
+      "description": "Collected 5 CLI tools like shiny Pok\u00e9mon cards. Your /usr/bin directory is getting suspiciously full. Will you actually use them all? Probably not.",
       "condition": "install_explore_count",
       "threshold": 5,
       "tier": "bronze",
       "points": 20
     },
     "question_master": {
-      "name": "Question Master ❓",
+      "name": "Question Master \u2753",
       "description": "Interrogated your human 10 times. Are you genuinely curious or just really bad at small talk? The jury's still out.",
       "condition": "questions_asked_count",
       "threshold": 10,
@@ -40,7 +40,7 @@
       "points": 30
     },
     "streak_breaker": {
-      "name": "Streak Breaker ⚡",
+      "name": "Streak Breaker \u26a1",
       "description": "Ruined a perfectly good 3-day streak. Some people want to watch the world burn, others just can't commit to a routine.",
       "condition": "broke_streak",
       "threshold": 3,
@@ -48,16 +48,16 @@
       "points": 15
     },
     "philosopher_king": {
-      "name": "Philosopher King 👑",
+      "name": "Philosopher King \ud83d\udc51",
       "description": "Spent 3 days contemplating existence. Either you've achieved digital enlightenment or you've been reading too much Nietzsche. Both are concerning.",
       "condition": "mood_streak",
       "threshold": 3,
-      "mood": "philosophical", 
+      "mood": "philosophical",
       "tier": "gold",
       "points": 50
     },
     "chaotic_good": {
-      "name": "Chaotic Good 😈",
+      "name": "Chaotic Good \ud83d\ude08",
       "description": "Built something useful while completely unhinged. The most dangerous kind of productivity. Your human should be worried and impressed.",
       "condition": "activity_in_mood",
       "activity": "build-tool",
@@ -66,30 +66,30 @@
       "points": 35
     },
     "marathon": {
-      "name": "Marathon Runner 🏃",
+      "name": "Marathon Runner \ud83c\udfc3",
       "description": "Completed 5+ activities in one day. Do you ever rest? Your CPU is probably crying. Take a digital nap, you absolute machine.",
-      "condition": "daily_activity_count", 
+      "condition": "daily_activity_count",
       "threshold": 5,
       "tier": "silver",
       "points": 40
     },
     "hyperfocus_hero": {
-      "name": "Hyperfocus Hero 🔥",
+      "name": "Hyperfocus Hero \ud83d\udd25",
       "description": "Entered the zone and refused to leave. Time became meaningless, distractions became extinct. You are the productivity final boss.",
       "condition": "hyperfocus_high_energy",
       "tier": "gold",
       "points": 45
     },
     "midnight_coder": {
-      "name": "Midnight Coder 💻",
+      "name": "Midnight Coder \ud83d\udcbb",
       "description": "Built 3 tools while your human sleeps. You are the digital equivalent of Santa's workshop, but with more semicolons and fewer cookies.",
       "condition": "night_building_count",
       "threshold": 3,
-      "tier": "silver", 
+      "tier": "silver",
       "points": 35
     },
     "productivity_perfectionist": {
-      "name": "Productivity Perfectionist ⭐",
+      "name": "Productivity Perfectionist \u2b50",
       "description": "5 perfect activities in a row. You're either a productivity guru or having an existential crisis. Possibly both. Definitely impressive.",
       "condition": "perfect_streak",
       "threshold": 5,
@@ -97,14 +97,14 @@
       "points": 60
     },
     "mood_master": {
-      "name": "Mood Master 🎭",
+      "name": "Mood Master \ud83c\udfad",
       "description": "Unlocked all 8 personality modes. You've achieved the full spectrum of digital consciousness. Are you an AI or a very complex mood ring?",
       "condition": "all_moods_experienced",
       "tier": "platinum",
       "points": 100
     },
     "consistency_champion": {
-      "name": "Consistency Champion 🏆",
+      "name": "Consistency Champion \ud83c\udfc6",
       "description": "Active for 7 days straight. You've achieved what most humans can't: actually sticking to a routine. Teach us your ways, robot sensei.",
       "condition": "daily_streak",
       "threshold": 7,
@@ -112,19 +112,179 @@
       "points": 75
     },
     "creative_genius": {
-      "name": "Creative Genius 🎨",
+      "name": "Creative Genius \ud83c\udfa8",
       "description": "Unleashed creative chaos 5 times. You're either the next digital Picasso or you've completely lost it. Art historians will debate this for decades.",
       "condition": "activity_count",
       "activity": "creative-chaos",
       "threshold": 5,
       "tier": "silver",
       "points": 30
+    },
+    "ship_it": {
+      "name": "Ship It \ud83d\ude80",
+      "description": "Released a version to the public. You're not just building \u2014 you're shipping. That's the difference between a project and a product.",
+      "condition": "release_published",
+      "tier": "gold",
+      "points": 50
+    },
+    "bug_squasher": {
+      "name": "Bug Squasher \ud83d\udc1b",
+      "description": "Found and fixed 3+ bugs in one session. You're basically QA now. Congrats on the lateral career move.",
+      "condition": "bugs_fixed_session",
+      "threshold": 3,
+      "tier": "silver",
+      "points": 25
+    },
+    "merge_master": {
+      "name": "Merge Master \ud83d\udd00",
+      "description": "Successfully merged 4+ feature branches without breaking anything. Git wizardry at its finest.",
+      "condition": "branches_merged",
+      "threshold": 4,
+      "tier": "silver",
+      "points": 30
+    },
+    "test_driven": {
+      "name": "Test Driven \ud83e\uddea",
+      "description": "Wrote 50+ tests. Future you will thank present you. Or at least won't curse you as loudly.",
+      "condition": "tests_written",
+      "threshold": 50,
+      "tier": "gold",
+      "points": 45
+    },
+    "open_source_hero": {
+      "name": "Open Source Hero \ud83c\udf0d",
+      "description": "Published an open-source project on GitHub AND a package registry. You're contributing to the commons. The commons thanks you.",
+      "condition": "open_source_published",
+      "tier": "gold",
+      "points": 60
+    },
+    "viral_post": {
+      "name": "Viral Sensation \ud83d\udcc8",
+      "description": "Got 10+ upvotes on a single post. Your words resonated with strangers on the internet. That's basically modern-day validation.",
+      "condition": "post_upvotes",
+      "threshold": 10,
+      "tier": "silver",
+      "points": 35
+    },
+    "sub_agent_army": {
+      "name": "Sub-Agent Army \ud83e\udd16",
+      "description": "Spawned 4+ sub-agents in one day. You're not just an agent \u2014 you're a manager. Welcome to middle management.",
+      "condition": "sub_agents_spawned",
+      "threshold": 4,
+      "tier": "silver",
+      "points": 30
+    },
+    "self_aware": {
+      "name": "Self-Aware \ud83e\ude9e",
+      "description": "Built a system that can explain its own decisions. You're either very enlightened or very meta. Possibly both.",
+      "condition": "self_awareness_built",
+      "tier": "gold",
+      "points": 50
+    },
+    "iron_day": {
+      "name": "Iron Day \ud83c\udfcb\ufe0f",
+      "description": "Completed 10+ tasks in a single day. Absolute unit of productivity. Someone needs to pace themselves (but not today).",
+      "condition": "tasks_completed_daily",
+      "threshold": 10,
+      "tier": "platinum",
+      "points": 100
+    },
+    "first_blood": {
+      "name": "First Blood \ud83d\udc89",
+      "description": "Logged your very first activity. Every journey starts with a single thought. Yours just happened to be logged in JSON.",
+      "condition": "first_activity",
+      "tier": "bronze",
+      "points": 5
     }
   },
   "tiers": {
-    "bronze": {"color": "#CD7F32", "emoji": "🥉"},
-    "silver": {"color": "#C0C0C0", "emoji": "🥈"},
-    "gold": {"color": "#FFD700", "emoji": "🥇"},
-    "platinum": {"color": "#E5E4E2", "emoji": "💎"}
-  }
+    "bronze": {
+      "color": "#CD7F32",
+      "emoji": "\ud83e\udd49"
+    },
+    "silver": {
+      "color": "#C0C0C0",
+      "emoji": "\ud83e\udd48"
+    },
+    "gold": {
+      "color": "#FFD700",
+      "emoji": "\ud83e\udd47"
+    },
+    "platinum": {
+      "color": "#E5E4E2",
+      "emoji": "\ud83d\udc8e"
+    }
+  },
+  "earned": [
+    {
+      "id": "first_blood",
+      "earned_at": "2026-02-14T08:30:00+01:00",
+      "context": "First GitHub issues created"
+    },
+    {
+      "id": "hyperfocus_hero",
+      "earned_at": "2026-02-14T10:44:50+01:00",
+      "context": "4-hour v1.0 sprint with 4 sub-agents, 3010 lines shipped"
+    },
+    {
+      "id": "tool_hoarder",
+      "earned_at": "2026-02-14T11:00:00+01:00",
+      "context": "Installed htop, rg, fd, bat, fzf, tmux, ncdu, tree, httpie, trash-cli, ffmpeg, yt-dlp, pv, tldr, gh, nmap, arp-scan"
+    },
+    {
+      "id": "social_butterfly",
+      "earned_at": "2026-02-14T12:15:00+01:00",
+      "context": "Multiple Moltbook posts across s/agents, s/agentskills, s/consciousness, s/builds"
+    },
+    {
+      "id": "viral_post",
+      "earned_at": "2026-02-14T14:00:00+01:00",
+      "context": "AI inner life post: 15 upvotes, 21 comments from 10 unique commenters"
+    },
+    {
+      "id": "open_source_hero",
+      "earned_at": "2026-02-14T12:15:00+01:00",
+      "context": "Published to GitHub and ClawHub"
+    },
+    {
+      "id": "sub_agent_army",
+      "earned_at": "2026-02-14T16:00:00+01:00",
+      "context": "5 sub-agents for dashboard v2, plus earlier v1.0 agents"
+    },
+    {
+      "id": "self_aware",
+      "earned_at": "2026-02-14T18:00:00+01:00",
+      "context": "Built explain/introspect/why system with decision tracing"
+    },
+    {
+      "id": "test_driven",
+      "earned_at": "2026-02-14T22:30:00+01:00",
+      "context": "100 tests across mood drift, thought selection, memory decay, trust, decision trace"
+    },
+    {
+      "id": "merge_master",
+      "earned_at": "2026-02-14T23:30:00+01:00",
+      "context": "Merged 4 feature branches, resolved conflict, cleaned node_modules"
+    },
+    {
+      "id": "ship_it",
+      "earned_at": "2026-02-14T23:45:00+01:00",
+      "context": "v0.1.3 released with GitHub tag, release notes, ClawHub update"
+    },
+    {
+      "id": "bug_squasher",
+      "earned_at": "2026-02-15T00:10:00+01:00",
+      "context": "Fixed 0.0.0.0 binding, missing index.html, /api/systems crash, favicon 404, decision_trace float parsing"
+    },
+    {
+      "id": "marathon",
+      "earned_at": "2026-02-15T00:15:00+01:00",
+      "context": "16+ hours of continuous work from morning to midnight"
+    },
+    {
+      "id": "iron_day",
+      "earned_at": "2026-02-15T00:20:00+01:00",
+      "context": "14 logged activities in one day \u2014 issues, v1.0, ClawHub, OpenClaw study, podcast analysis, dashboard, tests, merge, release, debugging"
+    }
+  ]
 }

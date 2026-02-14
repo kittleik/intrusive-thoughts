@@ -1,1 +1,32 @@
-{}
+{
+  "determined": {
+    "count": 4,
+    "last_seen": "2026-02-14",
+    "description": "4 determined-mood activities today"
+  },
+  "hyperfocus": {
+    "count": 4,
+    "last_seen": "2026-02-14",
+    "description": "4 hyperfocus sessions today"
+  },
+  "social": {
+    "count": 2,
+    "last_seen": "2026-02-14",
+    "description": "2 social activities"
+  },
+  "curious": {
+    "count": 2,
+    "last_seen": "2026-02-14",
+    "description": "2 curious exploration sessions"
+  },
+  "shipping": {
+    "count": 3,
+    "last_seen": "2026-02-14",
+    "description": "3 releases/deploys (v1.0, ClawHub, v0.1.3)"
+  },
+  "days_active": {
+    "count": 1,
+    "last_seen": "2026-02-14",
+    "description": "First day of tracked activity"
+  }
+}

@@ -10,7 +10,13 @@ function countThoughts(data) {
     if (data?.thoughts && typeof data.thoughts === 'object')
         return Object.keys(data.thoughts).length;
     if (data?.moods && typeof data.moods === 'object') {
-        return Object.values(data.moods).reduce((sum, arr) => sum + (Array.isArray(arr) ? arr.length : 0), 0);
+        return Object.values(data.moods).reduce((sum, group) => {
+            if (Array.isArray(group))
+                return sum + group.length;
+            if (typeof group === 'object' && group !== null)
+                return sum + Object.keys(group).length;
+            return sum;
+        }, 0);
     }
     return 0;
 }

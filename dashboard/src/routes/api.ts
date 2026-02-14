@@ -5,7 +5,11 @@ import { promisify } from 'util';
 function countThoughts(data: any): number {
   if (data?.thoughts && typeof data.thoughts === 'object') return Object.keys(data.thoughts).length;
   if (data?.moods && typeof data.moods === 'object') {
-    return Object.values(data.moods).reduce((sum: number, arr: any) => sum + (Array.isArray(arr) ? arr.length : 0), 0);
+    return Object.values(data.moods).reduce((sum: number, group: any) => {
+      if (Array.isArray(group)) return sum + group.length;
+      if (typeof group === 'object' && group !== null) return sum + Object.keys(group).length;
+      return sum;
+    }, 0);
   }
   return 0;
 }

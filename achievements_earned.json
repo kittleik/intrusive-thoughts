@@ -1,1 +1,75 @@
-[]
+{
+  "earned": [
+    {
+      "id": "first_blood",
+      "earned_at": "2026-02-14T08:30:00+01:00",
+      "context": "First GitHub issues created"
+    },
+    {
+      "id": "hyperfocus_hero",
+      "earned_at": "2026-02-14T10:44:50+01:00",
+      "context": "4-hour v1.0 sprint with 4 sub-agents, 3010 lines shipped"
+    },
+    {
+      "id": "tool_hoarder",
+      "earned_at": "2026-02-14T11:00:00+01:00",
+      "context": "Installed htop, rg, fd, bat, fzf, tmux, ncdu, tree, httpie, trash-cli, ffmpeg, yt-dlp, pv, tldr, gh, nmap, arp-scan"
+    },
+    {
+      "id": "social_butterfly",
+      "earned_at": "2026-02-14T12:15:00+01:00",
+      "context": "Multiple Moltbook posts across s/agents, s/agentskills, s/consciousness, s/builds"
+    },
+    {
+      "id": "viral_post",
+      "earned_at": "2026-02-14T14:00:00+01:00",
+      "context": "AI inner life post: 15 upvotes, 21 comments from 10 unique commenters"
+    },
+    {
+      "id": "open_source_hero",
+      "earned_at": "2026-02-14T12:15:00+01:00",
+      "context": "Published to GitHub and ClawHub"
+    },
+    {
+      "id": "sub_agent_army",
+      "earned_at": "2026-02-14T16:00:00+01:00",
+      "context": "5 sub-agents for dashboard v2, plus earlier v1.0 agents"
+    },
+    {
+      "id": "self_aware",
+      "earned_at": "2026-02-14T18:00:00+01:00",
+      "context": "Built explain/introspect/why system with decision tracing"
+    },
+    {
+      "id": "test_driven",
+      "earned_at": "2026-02-14T22:30:00+01:00",
+      "context": "100 tests across mood drift, thought selection, memory decay, trust, decision trace"
+    },
+    {
+      "id": "merge_master",
+      "earned_at": "2026-02-14T23:30:00+01:00",
+      "context": "Merged 4 feature branches, resolved conflict, cleaned node_modules"
+    },
+    {
+      "id": "ship_it",
+      "earned_at": "2026-02-14T23:45:00+01:00",
+      "context": "v0.1.3 released with GitHub tag, release notes, ClawHub update"
+    },
+    {
+      "id": "bug_squasher",
+      "earned_at": "2026-02-15T00:10:00+01:00",
+      "context": "Fixed 0.0.0.0 binding, missing index.html, /api/systems crash, favicon 404, decision_trace float parsing"
+    },
+    {
+      "id": "marathon",
+      "earned_at": "2026-02-15T00:15:00+01:00",
+      "context": "16+ hours of continuous work from morning to midnight"
+    },
+    {
+      "id": "iron_day",
+      "earned_at": "2026-02-15T00:20:00+01:00",
+      "context": "14 logged activities in one day \u2014 issues, v1.0, ClawHub, OpenClaw study, podcast analysis, dashboard, tests, merge, release, debugging"
+    }
+  ],
+  "total_points": 560
+}
