@@ -1,6 +1,14 @@
 import express from 'express';
 import { exec } from 'child_process';
 import { promisify } from 'util';
+
+function countThoughts(data: any): number {
+  if (data?.thoughts && typeof data.thoughts === 'object') return Object.keys(data.thoughts).length;
+  if (data?.moods && typeof data.moods === 'object') {
+    return Object.values(data.moods).reduce((sum: number, arr: any) => sum + (Array.isArray(arr) ? arr.length : 0), 0);
+  }
+  return 0;
+}
 import { getDataDir } from '../services/config.js';
 import { loadHistory, loadPicks, loadRejections, loadDecisions, loadStreamData } from '../services/history.js';
 import { loadTodayMood, loadMoodHistory } from '../services/mood.js';
@@ -198,7 +206,7 @@ router.get('/systems', (_req, res) => {
     const systems: SystemsResponse = {
       mood: { status: 'active', current_mood: todayMood },
       memory: { status: 'active', entries: history.length },
-      thoughts: { status: 'active', total_thoughts: Object.keys(thoughts.thoughts).length },
+      thoughts: { status: 'active', total_thoughts: countThoughts(thoughts) },
       achievements: { status: 'active', earned: achievements.earned.length },
       health: { status: 'active', monitoring: true }
     };

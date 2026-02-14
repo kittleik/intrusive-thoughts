@@ -6,6 +6,14 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = __importDefault(require("express"));
 const child_process_1 = require("child_process");
 const util_1 = require("util");
+function countThoughts(data) {
+    if (data?.thoughts && typeof data.thoughts === 'object')
+        return Object.keys(data.thoughts).length;
+    if (data?.moods && typeof data.moods === 'object') {
+        return Object.values(data.moods).reduce((sum, arr) => sum + (Array.isArray(arr) ? arr.length : 0), 0);
+    }
+    return 0;
+}
 const config_js_1 = require("../services/config.js");
 const history_js_1 = require("../services/history.js");
 const mood_js_1 = require("../services/mood.js");
@@ -194,7 +202,7 @@ router.get('/systems', (_req, res) => {
         const systems = {
             mood: { status: 'active', current_mood: todayMood },
             memory: { status: 'active', entries: history.length },
-            thoughts: { status: 'active', total_thoughts: Object.keys(thoughts.thoughts).length },
+            thoughts: { status: 'active', total_thoughts: countThoughts(thoughts) },
             achievements: { status: 'active', earned: achievements.earned.length },
             health: { status: 'active', monitoring: true }
         };
