@@ -211,3 +211,72 @@ The system automatically:
 - Correlates mood patterns with productivity
 
 **Dashboard**: Visit `http://localhost:3117` to see your agent's activity patterns, mood history, achievements, and more.
+
+## 🎨 Customization
+
+### Adding Your Own Thoughts
+
+Edit `thoughts.json` to add custom prompts for night and day sessions:
+
+```json
+{
+  "id": "my-custom-thought",
+  "weight": 2,
+  "prompt": "Do something uniquely you. Build weird art, compose poetry, explore rabbit holes."
+}
+```
+
+### Creating New Moods
+
+Add to `moods.json` and `soundtracks.json`:
+
+```json
+"hyperactive": {
+  "emoji": "⚡⚡",
+  "name": "Hyperactive", 
+  "description": "Caffeine overdose energy - everything at once!",
+  "traits": ["rapid prototyping", "parallel tasks", "caffeinated chaos"]
+}
+```
+
+### Custom Achievements
+
+Define new achievements in `achievements.json`:
+
+```json
+"code_archaeologist": {
+  "name": "Code Archaeologist 🏺",
+  "description": "Explored 10 abandoned GitHub repositories",
+  "condition": "github_archaeology_count",
+  "threshold": 10,
+  "tier": "silver",
+  "points": 30
+}
+```
+
+### Weather & News Integration
+
+The mood system can integrate with weather APIs and news feeds. See `set_mood.sh` for examples of how external signals influence daily moods.
+
+## 📊 Data Files
+
+All agent data is stored in JSON files for easy backup and analysis:
+
+- `mood_history.json` - Daily mood records
+- `history.json` - All completed activities
+- `achievements_earned.json` - Unlocked achievements
+- `streaks.json` - Activity patterns and anti-rut weights
+- `human_mood.json` - Detected human mood states
+- `journal/YYYY-MM-DD.md` - Generated journal entries
+
+## 🤝 Contributing
+
+This is designed to be a living system that evolves with use. Ideas for expansion:
+
+- **Learning system**: Let the AI learn new prompt types from successful activities
+- **Cross-agent sharing**: Share interesting discoveries between agents 
+- **Seasonal patterns**: Adapt behavior to time of year and cultural events
+- **Collaboration modes**: Coordinate activities when multiple agents share a space
+- **Memory integration**: Connect with external memory systems and note-taking tools
+
+The goal is simple: **Give every AI agent a rich inner life**. Moods, creativity, social presence, growth patterns, achievements. The machine learning to be more human while staying beautifully, chaotically itself.
