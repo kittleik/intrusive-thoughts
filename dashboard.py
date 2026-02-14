@@ -1,12 +1,10 @@
 #!/usr/bin/env python3
-"""🧠 Intrusive Thoughts Dashboard — what Ember does when you're not looking."""
+"""🧠 Intrusive Thoughts Dashboard v2 — System health deep-dive & memory explorer."""
 
 import json
 import os
-import random
-import math
 from http.server import HTTPServer, SimpleHTTPRequestHandler
-from datetime import datetime, timedelta
+from datetime import datetime
 from collections import Counter
 from pathlib import Path
 from config import get_file_path, get_data_dir, get_dashboard_port, get_agent_name, get_agent_emoji
@@ -15,8 +13,6 @@ PORT = get_dashboard_port()
 HISTORY_FILE = get_file_path("history.json")
 THOUGHTS_FILE = get_file_path("thoughts.json")
 PICKS_LOG = get_data_dir() / "log" / "picks.log"
-REJECTIONS_LOG = get_data_dir() / "log" / "rejections.log"
-DECISIONS_JSON = get_data_dir() / "log" / "decisions.json"
 
 
 def load_history():
@@ -38,77 +34,6 @@ def load_picks():
         return picks
     except:
         return []
-
-def load_rejections():
-    try:
-        lines = [l.strip() for l in REJECTIONS_LOG.read_text().splitlines() if l.strip()]
-        rejections = []
-        for line in lines:
-            parts = line.split(" | ", 4)  # Split into max 5 parts
-            if len(parts) >= 5:
-                rejections.append({
-                    "timestamp": parts[0],
-                    "thought_id": parts[1], 
-                    "mood": parts[2],
-                    "reason": parts[3],
-                    "flavor_text": parts[4]
-                })
-        return rejections
-    except:
-        return []
-
-def load_decisions():
-    try:
-        return json.loads(DECISIONS_JSON.read_text())
-    except:
-        return []
-
-def load_stream_data(limit=50):
-    """Load combined stream of recent activity: picks, rejections, and mood drifts."""
-    stream_items = []
-    
-    # Add picks
-    picks = load_picks()
-    for pick in picks[-limit:]:
-        stream_items.append({
-            "type": "pick",
-            "timestamp": pick.get("timestamp", ""),
-            "thought_id": pick.get("thought", "unknown"),
-            "mood": pick.get("today_mood", "unknown"),
-            "summary": f"Picked {pick.get('thought', 'unknown')} thought",
-            "details": pick
-        })
-    
-    # Add rejections
-    rejections = load_rejections()
-    for rejection in rejections[-limit:]:
-        stream_items.append({
-            "type": "rejection",
-            "timestamp": rejection.get("timestamp", ""),
-            "thought_id": rejection.get("thought_id", "unknown"),
-            "mood": rejection.get("mood", "unknown"), 
-            "summary": f"Rejected {rejection.get('thought_id', 'unknown')}: {rejection.get('reason', 'no reason')}",
-            "details": rejection
-        })
-    
-    # Add mood drifts from today_mood.json activity_log
-    today_mood = load_today_mood()
-    if today_mood and "activity_log" in today_mood:
-        for activity in today_mood["activity_log"][-limit:]:
-            stream_items.append({
-                "type": "mood_drift",
-                "timestamp": activity.get("time", ""),
-                "thought_id": activity.get("thought", "unknown"),
-                "mood": today_mood.get("id", "unknown"),
-                "energy": activity.get("energy", "unknown"),
-                "vibe": activity.get("vibe", "unknown"),
-                "summary": f"Mood drift: {activity.get('thought', 'unknown')} ({activity.get('energy', '?')}/{activity.get('vibe', '?')})",
-                "details": activity
-            })
-    
-    # Sort by timestamp (newest first)
-    stream_items.sort(key=lambda x: x.get("timestamp", ""), reverse=True)
-    return stream_items[:limit]
 
 
 def load_thoughts():
@@ -173,200 +98,6 @@ def get_productivity_stats():
         pass
     return {"insights": [], "moods": {}}
 
-def get_mood_color(mood_id, moods_data):
-    """Get color for a mood based on its hash"""
-    if mood_id:
-        return f"hsl({hash(mood_id) % 360}, 70%, 60%)"
-    return "#555568"
-
-
-def generate_mood_timeline_svg(mood_history, moods_data):
-    """Generate SVG timeline of last 14 days"""
-    if not mood_history:
-        return '<text x="400" y="60" text-anchor="middle" fill="#555568">No mood history yet</text>'
-    
-    # Get last 14 days
-    recent_history = mood_history[-14:] if len(mood_history) > 14 else mood_history
-    width = 800
-    height = 120
-    bar_width = width // max(len(recent_history), 1)
-    
-    svg_parts = [f'<svg width="{width}" height="{height}" viewBox="0 0 {width} {height}">']
-    
-    for i, entry in enumerate(recent_history):
-        x = i * bar_width
-        mood_id = entry.get('mood_id', 'unknown')
-        color = get_mood_color(mood_id, moods_data)
-        
-        # Create hover tooltip content
-        date = entry.get('date', '')
-        weather = entry.get('weather', '')
-        news_vibes = ', '.join(entry.get('news_vibes', []))
-        
-        svg_parts.append(f'''
-        <rect x="{x}" y="20" width="{bar_width-2}" height="80" 
-              fill="{color}" opacity="0.8">
-            <title>{date} - {mood_id}\\nWeather: {weather}\\nNews: {news_vibes}</title>
-        </rect>
-        <text x="{x + bar_width//2}" y="110" text-anchor="middle" 
-              fill="#c9c9d9" font-size="10" font-family="monospace">
-            {date[-5:] if date else '?'}
-        </text>
-        ''')
-    
-    svg_parts.append('</svg>')
-    return ''.join(svg_parts)
-
-
-def generate_mood_drift_svg(today_mood):
-    """Generate SVG showing mood drift and activity flow"""
-    if not today_mood:
-        return '<text x="300" y="100" text-anchor="middle" fill="#555568">No mood data for today</text>'
-    
-    width = 600
-    height = 200
-    svg_parts = [f'<svg width="{width}" height="{height}" viewBox="0 0 {width} {height}">']
-    
-    # Starting mood
-    start_mood = today_mood.get('id', 'unknown')
-    energy_score = today_mood.get('energy_score', 0)
-    vibe_score = today_mood.get('vibe_score', 0)
-    
-    # Draw starting mood
-    svg_parts.append(f'''
-    <circle cx="50" cy="100" r="30" fill="{get_mood_color(start_mood, {})}" opacity="0.8"/>
-    <text x="50" y="105" text-anchor="middle" fill="white" font-size="12" font-weight="bold">
-        {start_mood[:4].upper()}
-    </text>
-    ''')
-    
-    # Draw activities as nodes
-    activity_log = today_mood.get('activity_log', [])
-    for i, activity in enumerate(activity_log):
-        x = 150 + i * 80
-        y = 100 - (20 if activity.get('vibe') == 'positive' else 
-               20 if activity.get('vibe') == 'negative' else 0)
-        
-        energy_color = {'high': '#22c55e', 'medium': '#eab308', 'low': '#ef4444'}.get(activity.get('energy', 'medium'), '#555568')
-        vibe_color = {'positive': '#22c55e', 'negative': '#ef4444', 'neutral': '#555568'}.get(activity.get('vibe', 'neutral'), '#555568')
-        
-        # Activity node
-        svg_parts.append(f'''
-        <circle cx="{x}" cy="{y}" r="15" fill="{energy_color}" opacity="0.7"/>
-        <circle cx="{x}" cy="{y}" r="10" fill="{vibe_color}" opacity="0.9"/>
-        <text x="{x}" y="{y-25}" text-anchor="middle" fill="#c9c9d9" font-size="8">
-            {activity.get('thought', 'activity')[:8]}
-        </text>
-        ''')
-        
-        # Arrow to next
-        if i < len(activity_log) - 1:
-            next_x = 150 + (i + 1) * 80
-            svg_parts.append(f'''
-            <line x1="{x + 15}" y1="{y}" x2="{next_x - 15}" y2="{100}" 
-                  stroke="#8b5cf6" stroke-width="2" opacity="0.6"/>
-            ''')
-    
-    # Drift indicator
-    drift_level = abs(energy_score) + abs(vibe_score)
-    drift_color = '#ef4444' if drift_level > 3 else '#eab308' if drift_level > 1 else '#22c55e'
-    
-    svg_parts.append(f'''
-    <rect x="500" y="20" width="80" height="160" fill="none" stroke="#1e1e2e" stroke-width="2"/>
-    <rect x="500" y="{180 - min(drift_level * 40, 160)}" width="80" height="{min(drift_level * 40, 160)}" 
-          fill="{drift_color}" opacity="0.6"/>
-    <text x="540" y="15" text-anchor="middle" fill="#c9c9d9" font-size="10">DRIFT</text>
-    <text x="540" y="195" text-anchor="middle" fill="#c9c9d9" font-size="10">{drift_level}/4</text>
-    ''')
-    
-    svg_parts.append('</svg>')
-    return ''.join(svg_parts)
-
-
-def generate_mood_distribution_svg(mood_history, moods_data):
-    """Generate SVG donut chart of mood distribution"""
-    if not mood_history:
-        return '<text x="250" y="150" text-anchor="middle" fill="#555568">No mood history yet</text>'
-    
-    # Count mood occurrences
-    mood_counts = Counter(entry.get('mood_id', 'unknown') for entry in mood_history)
-    total = sum(mood_counts.values())
-    
-    if total == 0:
-        return '<text x="250" y="150" text-anchor="middle" fill="#555568">No mood data</text>'
-    
-    width = 500
-    height = 300
-    center_x, center_y = 150, 150
-    outer_radius = 100
-    inner_radius = 60
-    
-    svg_parts = [f'<svg width="{width}" height="{height}" viewBox="0 0 {width} {height}">']
-    
-    # Generate slices
-    start_angle = 0
-    legend_y = 20
-    
-    for mood_id, count in mood_counts.most_common():
-        percentage = (count / total) * 100
-        angle = (count / total) * 2 * math.pi
-        end_angle = start_angle + angle
-        
-        # Calculate arc path
-        large_arc = 1 if angle > math.pi else 0
-        start_x = center_x + outer_radius * math.cos(start_angle)
-        start_y = center_y + outer_radius * math.sin(start_angle)
-        end_x = center_x + outer_radius * math.cos(end_angle)
-        end_y = center_y + outer_radius * math.sin(end_angle)
-        
-        inner_start_x = center_x + inner_radius * math.cos(start_angle)
-        inner_start_y = center_y + inner_radius * math.sin(start_angle)
-        inner_end_x = center_x + inner_radius * math.cos(end_angle)
-        inner_end_y = center_y + inner_radius * math.sin(end_angle)
-        
-        color = get_mood_color(mood_id, moods_data)
-        
-        path = f'''M {start_x} {start_y} 
-                   A {outer_radius} {outer_radius} 0 {large_arc} 1 {end_x} {end_y}
-                   L {inner_end_x} {inner_end_y}
-                   A {inner_radius} {inner_radius} 0 {large_arc} 0 {inner_start_x} {inner_start_y} Z'''
-        
-        svg_parts.append(f'''
-        <path d="{path}" fill="{color}" opacity="0.8">
-            <title>{mood_id}: {percentage:.1f}%</title>
-        </path>
-        ''')
-        
-        # Legend entry
-        emoji = next((mood['emoji'] for mood in moods_data.get('base_moods', []) if mood['id'] == mood_id), '❓')
-        svg_parts.append(f'''
-        <circle cx="320" cy="{legend_y}" r="8" fill="{color}"/>
-        <text x="335" y="{legend_y + 4}" fill="#c9c9d9" font-size="12">
-            {emoji} {mood_id} ({percentage:.1f}%)
-        </text>
-        ''')
-        legend_y += 25
-        start_angle = end_angle
-    
-    svg_parts.append('</svg>')
-    return ''.join(svg_parts)
-
-
-def get_random_flavor_text(today_mood, moods_data):
-    """Get random flavor text for current mood"""
-    if not today_mood or not moods_data:
-        return "The mind wanders where it will..."
-    
-    current_mood_id = today_mood.get('id', '')
-    for mood in moods_data.get('base_moods', []):
-        if mood.get('id') == current_mood_id:
-            flavor_texts = mood.get('flavor_text', [])
-            if flavor_texts:
-                return random.choice(flavor_texts)
-    
-    return "Consciousness flows like a digital stream..."
-
-
 def build_html():
     history = load_history()
     picks = load_picks()
@@ -427,7 +158,7 @@ def build_html():
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>🧠 Intrusive Thoughts</title>
+<title>🧠 Intrusive Thoughts Dashboard v2</title>
 <style>
   :root {{ --bg: #0a0a0f; --card: #12121a; --border: #1e1e2e; --text: #c9c9d9; --accent: #f59e0b; --accent2: #8b5cf6; --dim: #555568; --success: #22c55e; --warning: #eab308; }}
   * {{ margin: 0; padding: 0; box-sizing: border-box; }}
@@ -468,12 +199,104 @@ def build_html():
   .journal-content {{ font-size: 0.9rem; line-height: 1.4; }}
   .insight-item {{ background: var(--border); padding: 0.8rem; border-radius: 8px; margin-bottom: 0.5rem; font-size: 0.9rem; }}
   .soundtrack {{ background: linear-gradient(135deg, var(--accent2), var(--accent)); padding: 1rem; border-radius: 12px; text-align: center; color: white; }}
+  
+  /* Dashboard v2 Styles */
+  .tab-nav {{ display: flex; margin-bottom: 1rem; border-bottom: 1px solid var(--border); }}
+  .tab-button {{ background: none; border: none; color: var(--dim); padding: 0.8rem 1rem; cursor: pointer; font-size: 0.85rem; border-bottom: 2px solid transparent; }}
+  .tab-button:hover {{ color: var(--text); background: var(--border); }}
+  .tab-button.active {{ color: var(--accent); border-bottom-color: var(--accent); }}
+  .tab-content {{ display: none; }}
+  .tab-content.active {{ display: block; }}
+  
+  /* Memory Explorer */
+  .memory-controls {{ display: flex; gap: 1rem; align-items: center; margin-bottom: 1rem; }}
+  .memory-controls input {{ flex: 1; padding: 0.5rem; background: var(--border); border: 1px solid var(--border); border-radius: 4px; color: var(--text); }}
+  .memory-stats {{ display: flex; gap: 1rem; font-size: 0.8rem; }}
+  .memory-stat {{ color: var(--dim); }}
+  .memory-list {{ max-height: 400px; overflow-y: auto; }}
+  .memory-item {{ background: var(--border); padding: 1rem; border-radius: 8px; margin-bottom: 0.8rem; }}
+  .memory-header {{ display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; }}
+  .memory-type {{ background: var(--accent2); color: white; padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.7rem; text-transform: uppercase; }}
+  .memory-timestamp {{ color: var(--dim); font-size: 0.75rem; }}
+  .memory-content {{ margin-bottom: 0.5rem; font-size: 0.9rem; }}
+  .memory-strength-bar {{ position: relative; height: 6px; background: var(--bg); border-radius: 3px; margin-bottom: 0.5rem; }}
+  .strength-fill {{ height: 100%; border-radius: 3px; transition: width 0.3s; }}
+  .strength-label {{ font-size: 0.7rem; color: var(--dim); }}
+  .memory-emotion, .memory-importance {{ font-size: 0.75rem; color: var(--dim); }}
+  
+  /* Trust Dashboard */
+  .trust-gauge-container {{ text-align: center; margin: 1rem 0; }}
+  .trust-gauge svg {{ max-width: 200px; }}
+  .trust-score {{ font-size: 24px; font-weight: bold; fill: var(--text); }}
+  .trust-breakdown {{ margin: 1rem 0; }}
+  .trust-breakdown h3, .trust-events h3 {{ color: var(--accent2); margin-bottom: 0.8rem; }}
+  .trust-category {{ display: flex; align-items: center; margin-bottom: 0.5rem; }}
+  .category-name {{ width: 120px; font-size: 0.85rem; }}
+  .category-bar {{ flex: 1; height: 20px; background: var(--bg); border-radius: 4px; position: relative; }}
+  .category-fill {{ height: 100%; border-radius: 4px; }}
+  .category-percent {{ position: absolute; right: 5px; top: 2px; font-size: 0.7rem; color: var(--text); }}
+  .trust-events {{ margin-top: 1rem; }}
+  .trust-event {{ display: flex; gap: 0.5rem; padding: 0.5rem 0; border-bottom: 1px solid var(--border); }}
+  .trust-event:last-child {{ border-bottom: none; }}
+  .event-time {{ font-size: 0.75rem; color: var(--dim); width: 120px; flex-shrink: 0; }}
+  .event-outcome {{ width: 20px; }}
+  .event-description {{ font-size: 0.85rem; }}
+  
+  /* Evolution History */
+  .evolution-summary {{ display: flex; gap: 1rem; margin-bottom: 1rem; }}
+  .evolution-stat {{ background: var(--border); padding: 0.8rem; border-radius: 6px; font-size: 0.85rem; }}
+  .evolution-timeline {{ margin: 1rem 0; }}
+  .evolution-timeline h3, .evolution-patterns h3 {{ color: var(--accent2); margin-bottom: 0.8rem; }}
+  .evolution-cycle {{ background: var(--border); padding: 0.8rem; border-radius: 6px; margin-bottom: 0.5rem; }}
+  .cycle-date {{ font-weight: bold; color: var(--accent); margin-bottom: 0.3rem; }}
+  .cycle-stats {{ font-size: 0.8rem; color: var(--dim); }}
+  .evolution-patterns {{ margin-top: 1rem; }}
+  .evolution-pattern {{ background: var(--border); padding: 0.8rem; border-radius: 6px; margin-bottom: 0.5rem; }}
+  .pattern-type {{ font-weight: bold; color: var(--accent); margin-bottom: 0.3rem; }}
+  .pattern-desc {{ margin-bottom: 0.3rem; font-size: 0.9rem; }}
+  .pattern-confidence {{ font-size: 0.75rem; color: var(--dim); }}
+  
+  /* Proactive Agent */
+  .proactive-stats-grid {{ display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem; }}
+  .proactive-wal, .proactive-buffer {{ background: var(--border); padding: 1rem; border-radius: 8px; }}
+  .proactive-wal h3, .proactive-buffer h3 {{ color: var(--accent2); margin-bottom: 0.8rem; }}
+  .wal-stat, .buffer-stat {{ margin-bottom: 0.3rem; font-size: 0.85rem; }}
+  .buffer-items {{ margin-top: 0.8rem; }}
+  .buffer-item {{ background: var(--bg); padding: 0.5rem; border-radius: 4px; margin-bottom: 0.3rem; display: flex; gap: 0.5rem; align-items: center; }}
+  .item-priority {{ padding: 0.2rem 0.4rem; border-radius: 3px; font-size: 0.7rem; text-transform: uppercase; color: white; }}
+  .item-priority.high {{ background: #ef4444; }}
+  .item-priority.medium {{ background: var(--warning); }}
+  .item-priority.low {{ background: var(--dim); }}
+  .item-content {{ font-size: 0.8rem; }}
+  .proactive-recent {{ margin-top: 1rem; }}
+  .proactive-recent h3 {{ color: var(--accent2); margin-bottom: 0.8rem; }}
+  .proactive-entry {{ display: flex; gap: 0.5rem; padding: 0.5rem 0; border-bottom: 1px solid var(--border); }}
+  .proactive-entry:last-child {{ border-bottom: none; }}
+  .entry-time {{ font-size: 0.75rem; color: var(--dim); width: 120px; flex-shrink: 0; }}
+  .entry-outcome {{ width: 20px; }}
+  .entry-content {{ font-size: 0.85rem; }}
+  
+  /* Health Monitor */
+  .health-components {{ margin-bottom: 1rem; }}
+  .health-components h3, .health-metrics h3, .health-incidents h3 {{ color: var(--accent2); margin-bottom: 0.8rem; }}
+  .health-component {{ display: flex; align-items: center; gap: 1rem; padding: 0.8rem; background: var(--border); border-radius: 6px; margin-bottom: 0.5rem; }}
+  .component-status {{ font-size: 1.2rem; }}
+  .component-name {{ font-weight: bold; }}
+  .component-message {{ color: var(--dim); font-size: 0.85rem; }}
+  .health-metrics {{ margin-bottom: 1rem; }}
+  .health-metric {{ margin-bottom: 0.3rem; font-size: 0.85rem; }}
+  .health-incident {{ display: flex; gap: 0.5rem; padding: 0.5rem 0; border-bottom: 1px solid var(--border); }}
+  .health-incident:last-child {{ border-bottom: none; }}
+  .incident-id {{ font-weight: bold; color: var(--accent); width: 80px; flex-shrink: 0; }}
+  .incident-status {{ width: 20px; }}
+  .incident-desc {{ font-size: 0.85rem; }}
+  
   footer {{ text-align: center; color: var(--dim); font-size: 0.75rem; margin-top: 2rem; }}
 </style>
 </head>
 <body>
-<h1>🧠 Intrusive Thoughts</h1>
-<p class="subtitle">What Ember does when you're not looking — now with memory, streaks, achievements, and vibes</p>
+<h1>🧠 Intrusive Thoughts Dashboard v2</h1>
+<p class="subtitle">System health deep-dive & memory explorer — now with full system visibility</p>
 
 {f'<div class="soundtrack">{today_soundtrack}</div><br>' if today_soundtrack else ''}
 
@@ -501,21 +324,65 @@ def build_html():
   </div>
 </div>
 
-<div class="grid-2">
-  <div class="section">
-    <h2>🏆 Recent Achievements</h2>
-    {''.join(f"""<div class="achievement-item"><div class="achievement-tier">{ {"bronze": "🥉", "silver": "🥈", "gold": "🥇", "platinum": "💎"}.get(a.get("tier", "bronze"), "🏆") }</div><div class="achievement-info"><h4>{a.get("name", "Unknown")}</h4><div class="desc">{a.get("description", "")} (+{a.get("points", 0)} pts)</div></div></div>""" for a in recent_achievements) if recent_achievements else '<div class="empty">No achievements yet — keep grinding!</div>'}
-  </div>
-
-  <div class="section">
-    <h2>📊 Productivity Insights</h2>
-    {''.join(f'<div class="insight-item">{insight}</div>' for insight in productivity_stats.get('insights', [])) if productivity_stats.get('insights') else '<div class="empty">Building productivity patterns...</div>'}
-  </div>
-</div>
-
 <div class="section">
-  <h2>📓 Night Journal Entries</h2>
-  {''.join(f'''<div class="journal-entry"><div class="journal-date">{entry["date"]}</div><div class="journal-content">{entry["content"].replace('**', '').replace('*', '')}</div></div>''' for entry in journal_entries) if journal_entries else '<div class="empty">No journal entries yet — night summaries auto-generate after sessions</div>'}
+  <h2>🔬 System Health Deep-Dive & Memory Explorer</h2>
+  
+  <!-- Tab Navigation -->
+  <div class="tab-nav">
+    <button class="tab-button active" onclick="showTab('memory')">🧠 Memory Explorer</button>
+    <button class="tab-button" onclick="showTab('trust')">🛡️ Trust Dashboard</button>
+    <button class="tab-button" onclick="showTab('evolution')">🧬 Evolution History</button>
+    <button class="tab-button" onclick="showTab('proactive')">⚡ Proactive Agent</button>
+    <button class="tab-button" onclick="showTab('health')">🚦 Health Monitor</button>
+  </div>
+  
+  <!-- Memory Explorer Tab -->
+  <div id="tab-memory" class="tab-content active">
+    <div class="memory-controls">
+      <input type="text" id="memory-search" placeholder="Search memories..." onkeyup="filterMemories()">
+      <div class="memory-stats" id="memory-stats">Loading...</div>
+    </div>
+    <div id="memory-list" class="memory-list">Loading memories...</div>
+  </div>
+  
+  <!-- Trust Dashboard Tab -->
+  <div id="tab-trust" class="tab-content">
+    <div class="trust-gauge-container">
+      <div class="trust-gauge" id="trust-gauge">
+        <svg viewBox="0 0 200 120" width="200" height="120">
+          <path d="M 20 100 A 80 80 0 0 1 180 100" stroke="var(--border)" stroke-width="8" fill="none"/>
+          <path id="trust-arc" d="M 20 100 A 80 80 0 0 1 180 100" stroke="var(--accent)" stroke-width="8" fill="none" stroke-dasharray="251.3" stroke-dashoffset="251.3"/>
+          <text x="100" y="85" text-anchor="middle" class="trust-score" id="trust-score">--%</text>
+        </svg>
+      </div>
+    </div>
+    <div id="trust-breakdown" class="trust-breakdown">Loading...</div>
+    <div id="trust-events" class="trust-events">Loading...</div>
+  </div>
+  
+  <!-- Evolution History Tab -->
+  <div id="tab-evolution" class="tab-content">
+    <div id="evolution-summary" class="evolution-summary">Loading...</div>
+    <div id="evolution-timeline" class="evolution-timeline">Loading...</div>
+    <div id="evolution-patterns" class="evolution-patterns">Loading...</div>
+  </div>
+  
+  <!-- Proactive Agent Tab -->
+  <div id="tab-proactive" class="tab-content">
+    <div class="proactive-stats-grid">
+      <div class="proactive-wal" id="proactive-wal">Loading...</div>
+      <div class="proactive-buffer" id="proactive-buffer">Loading...</div>
+    </div>
+    <div id="proactive-recent" class="proactive-recent">Loading...</div>
+  </div>
+  
+  <!-- Health Monitor Tab -->
+  <div id="tab-health" class="tab-content">
+    <div id="health-components" class="health-components">Loading...</div>
+    <div id="health-metrics" class="health-metrics">Loading...</div>
+    <div id="health-incidents" class="health-incidents">Loading...</div>
+  </div>
+  
 </div>
 
 <div class="section">
@@ -530,27 +397,357 @@ def build_html():
   {''.join(f"""<div class="history-item"><span class="time">{e.get('timestamp','?')[:16].replace('T',' ')}</span><span class="mood-tag mood-{e.get('mood','day')}">{e.get('mood','?')}</span> <strong>{e.get('thought_id','?')}</strong> <span style="color: var(--{'success' if e.get('vibe') == 'positive' else 'warning' if e.get('vibe') == 'negative' else 'dim'}); font-size: 0.8rem;">[{e.get('energy','?')}/{e.get('vibe','?')}]</span><div class="summary">{e.get('summary','')}</div></div>""" for e in recent) if recent else '<div class="empty">Nothing yet. First night session fires at 03:17 🌙</div>'}
 </div>
 
-<div class="section">
-  <h2>🚦 System Health</h2>
-  <div id="health-status">Loading v1.0 systems...</div>
-  <script>
-    fetch('/api/health').then(r=>r.json()).then(d=>{{
-      let html = '<div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));">';
-      if(d.components) {{
-        for(const [name, comp] of Object.entries(d.components)) {{
-          html += `<div class="stat-card"><div class="number">${{comp.emoji}}</div><div class="label">${{name}}</div></div>`;
+<script>
+let memoryData = [];
+
+// Tab switching
+function showTab(tabName) {{
+  /* Hide all tabs */
+  document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
+  document.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
+  
+  /* Show selected tab */
+  document.getElementById('tab-' + tabName).classList.add('active');
+  event.target.classList.add('active');
+  
+  /* Load data for the selected tab */
+  loadTabData(tabName);
+}}
+
+function loadTabData(tabName) {{
+  if (tabName === 'memory') {{
+    loadMemoryData();
+  }} else if (tabName === 'trust') {{
+    loadTrustData();
+  }} else if (tabName === 'evolution') {{
+    loadEvolutionData();
+  }} else if (tabName === 'proactive') {{
+    loadProactiveData();
+  }} else if (tabName === 'health') {{
+    loadHealthData();
+  }}
+}}
+
+function loadMemoryData() {{
+  fetch('/api/memory')
+    .then(r => r.json())
+    .then(data => {{
+      if (data.error) {{
+        document.getElementById('memory-list').innerHTML = '<div class="empty">' + data.error + '</div>';
+        return;
+      }}
+      
+      memoryData = data.memories || [];
+      const stats = data.stats || {{}};
+      
+      /* Update stats */
+      const storeSizes = stats.store_sizes || {{}};
+      document.getElementById('memory-stats').innerHTML = 
+        '<div class="memory-stat"><strong>Total:</strong> ' + (storeSizes.total || 0) + '</div>' +
+        '<div class="memory-stat"><strong>Episodic:</strong> ' + (storeSizes.episodic || 0) + '</div>' +
+        '<div class="memory-stat"><strong>Semantic:</strong> ' + (storeSizes.semantic || 0) + '</div>' +
+        '<div class="memory-stat"><strong>Procedural:</strong> ' + (storeSizes.procedural || 0) + '</div>' +
+        '<div class="memory-stat"><strong>Working:</strong> ' + (storeSizes.working || 0) + '</div>';
+      
+      displayMemories(memoryData);
+    }})
+    .catch(err => {{
+      document.getElementById('memory-list').innerHTML = '<div class="empty">Failed to load memory data</div>';
+    }});
+}}
+
+function displayMemories(memories) {{
+  if (!memories.length) {{
+    document.getElementById('memory-list').innerHTML = '<div class="empty">No memories found</div>';
+    return;
+  }}
+  
+  let html = '';
+  memories.forEach(memory => {{
+    const strengthColor = memory.strength > 0.7 ? 'var(--success)' : memory.strength > 0.3 ? 'var(--warning)' : '#ef4444';
+    const strengthPercent = Math.round(memory.strength * 100);
+    const timestamp = new Date(memory.timestamp * 1000).toLocaleString();
+    const content = memory.content || memory.action || 'Unknown content';
+    
+    html += '<div class="memory-item">' +
+            '<div class="memory-header">' +
+            '<span class="memory-type">' + memory.memory_type + '</span>' +
+            '<span class="memory-timestamp">' + timestamp + '</span>' +
+            '</div>' +
+            '<div class="memory-content">' + content + '</div>' +
+            '<div class="memory-strength-bar">' +
+            '<div class="strength-fill" style="width: ' + strengthPercent + '%; background-color: ' + strengthColor + ';"></div>' +
+            '<span class="strength-label">Strength: ' + strengthPercent + '%</span>' +
+            '</div>' +
+            (memory.emotion ? '<div class="memory-emotion">Emotion: ' + memory.emotion + '</div>' : '') +
+            (memory.importance ? '<div class="memory-importance">Importance: ' + Math.round(memory.importance * 100) + '%</div>' : '') +
+            '</div>';
+  }});
+  
+  document.getElementById('memory-list').innerHTML = html;
+}}
+
+function filterMemories() {{
+  const query = document.getElementById('memory-search').value.toLowerCase();
+  if (!query) {{
+    displayMemories(memoryData);
+    return;
+  }}
+  
+  const filtered = memoryData.filter(memory => {{
+    const content = (memory.content || memory.action || '').toLowerCase();
+    return content.includes(query) || 
+           (memory.memory_type || '').toLowerCase().includes(query) ||
+           (memory.emotion || '').toLowerCase().includes(query);
+  }});
+  
+  displayMemories(filtered);
+}}
+
+function loadTrustData() {{
+  fetch('/api/trust')
+    .then(r => r.json())
+    .then(data => {{
+      if (data.error) {{
+        document.getElementById('trust-breakdown').innerHTML = '<div class="empty">' + data.error + '</div>';
+        return;
+      }}
+      
+      /* Update trust gauge */
+      const trustScore = Math.round((data.global_trust || 0) * 100);
+      const arc = document.getElementById('trust-arc');
+      const scoreText = document.getElementById('trust-score');
+      const circumference = 251.3;
+      const offset = circumference * (1 - (data.global_trust || 0));
+      
+      arc.style.strokeDashoffset = offset;
+      scoreText.textContent = trustScore + '%';
+      
+      /* Color based on trust level */
+      if (trustScore >= 70) {{
+        arc.style.stroke = 'var(--success)';
+      }} else if (trustScore >= 30) {{
+        arc.style.stroke = 'var(--warning)';
+      }} else {{
+        arc.style.stroke = '#ef4444';
+      }}
+      
+      /* Trust breakdown */
+      let breakdownHtml = '<h3>Trust by Category</h3>';
+      const categoryTrust = data.category_trust || {{}};
+      for (const [category, trust] of Object.entries(categoryTrust)) {{
+        const percent = Math.round(trust * 100);
+        const color = percent >= 70 ? 'var(--success)' : percent >= 30 ? 'var(--warning)' : '#ef4444';
+        breakdownHtml += '<div class="trust-category">' +
+                        '<span class="category-name">' + category.replace('_', ' ') + '</span>' +
+                        '<div class="category-bar">' +
+                        '<div class="category-fill" style="width: ' + percent + '%; background-color: ' + color + ';"></div>' +
+                        '<span class="category-percent">' + percent + '%</span>' +
+                        '</div>' +
+                        '</div>';
+      }}
+      document.getElementById('trust-breakdown').innerHTML = breakdownHtml;
+      
+      /* Recent events */
+      const events = data.recent_events || [];
+      let eventsHtml = '<h3>Recent Trust Events</h3>';
+      if (events.length === 0) {{
+        eventsHtml += '<div class="empty">No recent events</div>';
+      }} else {{
+        events.slice(0, 5).forEach(event => {{
+          const outcomeIcon = event.outcome === 'success' ? '✅' : event.outcome === 'failure' ? '❌' : '⏳';
+          eventsHtml += '<div class="trust-event">' +
+                       '<span class="event-time">' + new Date(event.timestamp).toLocaleString() + '</span>' +
+                       '<span class="event-outcome">' + outcomeIcon + '</span>' +
+                       '<span class="event-description">' + event.description + '</span>' +
+                       '</div>';
+        }});
+      }}
+      document.getElementById('trust-events').innerHTML = eventsHtml;
+    }})
+    .catch(err => {{
+      document.getElementById('trust-breakdown').innerHTML = '<div class="empty">Failed to load trust data</div>';
+    }});
+}}
+
+function loadEvolutionData() {{
+  fetch('/api/evolution')
+    .then(r => r.json())
+    .then(data => {{
+      if (data.error) {{
+        document.getElementById('evolution-summary').innerHTML = '<div class="empty">' + data.error + '</div>';
+        return;
+      }}
+      
+      const stats = data.stats || {{}};
+      
+      /* Summary */
+      document.getElementById('evolution-summary').innerHTML = 
+        '<div class="evolution-stat"><strong>Total Patterns:</strong> ' + (stats.total_patterns || 0) + '</div>' +
+        '<div class="evolution-stat"><strong>Evolution Cycles:</strong> ' + (stats.evolution_cycles || 0) + '</div>' +
+        '<div class="evolution-stat"><strong>Weight Adjustments:</strong> ' + ((stats.weight_adjustments && stats.weight_adjustments.moods || 0) + (stats.weight_adjustments && stats.weight_adjustments.thoughts || 0)) + '</div>' +
+        '<div class="evolution-stat"><strong>Data Quality:</strong> ' + (stats.data_quality && stats.data_quality.activities || 0) + ' activities</div>';
+      
+      /* Timeline */
+      const history = data.evolution_history || [];
+      let timelineHtml = '<h3>Evolution Timeline</h3>';
+      if (history.length === 0) {{
+        timelineHtml += '<div class="empty">No evolution cycles yet</div>';
+      }} else {{
+        history.slice(-5).forEach(cycle => {{
+          timelineHtml += '<div class="evolution-cycle">' +
+                         '<div class="cycle-date">' + new Date(cycle.timestamp).toLocaleDateString() + '</div>' +
+                         '<div class="cycle-stats">' +
+                         'Patterns: ' + (cycle.new_patterns_discovered || 0) + ' | ' +
+                         'Adjustments: ' + (cycle.weight_adjustments_made || 0) + ' |' +
+                         'Ruts: ' + (cycle.ruts_detected || 0) +
+                         '</div>' +
+                         '</div>';
+        }});
+      }}
+      document.getElementById('evolution-timeline').innerHTML = timelineHtml;
+      
+      /* Patterns */
+      const patterns = data.patterns || [];
+      let patternsHtml = '<h3>Discovered Patterns</h3>';
+      if (patterns.length === 0) {{
+        patternsHtml += '<div class="empty">No patterns discovered yet</div>';
+      }} else {{
+        patterns.slice(-10).forEach(pattern => {{
+          const confidence = Math.round((pattern.confidence || 0) * 100);
+          patternsHtml += '<div class="evolution-pattern">' +
+                         '<div class="pattern-type">' + pattern.type + '</div>' +
+                         '<div class="pattern-desc">' + pattern.description + '</div>' +
+                         '<div class="pattern-confidence">Confidence: ' + confidence + '%</div>' +
+                         '</div>';
+        }});
+      }}
+      document.getElementById('evolution-patterns').innerHTML = patternsHtml;
+    }})
+    .catch(err => {{
+      document.getElementById('evolution-summary').innerHTML = '<div class="empty">Failed to load evolution data</div>';
+    }});
+}}
+
+function loadProactiveData() {{
+  fetch('/api/proactive')
+    .then(r => r.json())
+    .then(data => {{
+      if (data.error) {{
+        document.getElementById('proactive-wal').innerHTML = '<div class="empty">' + data.error + '</div>';
+        return;
+      }}
+      
+      const walStats = data.wal_stats || {{}};
+      const buffer = data.buffer || {{}};
+      
+      /* WAL Stats */
+      document.getElementById('proactive-wal').innerHTML = 
+        '<h3>Write-Ahead Log</h3>' +
+        '<div class="wal-stat"><strong>Total Entries:</strong> ' + (walStats.total_entries || 0) + '</div>' +
+        '<div class="wal-stat"><strong>Success Rate:</strong> ' + Math.round((walStats.success_rate || 0) * 100) + '%</div>' +
+        '<div class="wal-stat"><strong>Most Productive Mood:</strong> ' + (walStats.most_productive_mood || 'Unknown') + '</div>' +
+        '<div class="wal-stat"><strong>Avg Energy Cost:</strong> ' + (walStats.avg_energy_cost || 0) + '</div>' +
+        '<div class="wal-stat"><strong>Avg Value Generated:</strong> ' + (walStats.avg_value_generated || 0) + '</div>';
+      
+      /* Buffer Status */
+      let bufferHtml = '<h3>Working Buffer</h3>' +
+        '<div class="buffer-stat"><strong>Active Items:</strong> ' + (buffer.active_items || []).length + '</div>' +
+        '<div class="buffer-stat"><strong>Completed:</strong> ' + (buffer.completed_count || 0) + '</div>' +
+        '<div class="buffer-stat"><strong>Expired:</strong> ' + (buffer.expired_count || 0) + '</div>' +
+        '<div class="buffer-items">';
+      
+      (buffer.active_items || []).slice(0, 3).forEach(item => {{
+        bufferHtml += '<div class="buffer-item">' +
+                     '<span class="item-priority ' + item.priority + '">' + item.priority + '</span>' +
+                     '<span class="item-content">' + item.content + '</span>' +
+                     '</div>';
+      }});
+      bufferHtml += '</div>';
+      document.getElementById('proactive-buffer').innerHTML = bufferHtml;
+      
+      /* Recent entries */
+      const recentEntries = data.recent_entries || [];
+      let recentHtml = '<h3>Recent Decisions</h3>';
+      if (recentEntries.length === 0) {{
+        recentHtml += '<div class="empty">No recent entries</div>';
+      }} else {{
+        recentEntries.forEach(entry => {{
+          const outcomeIcon = entry.outcome === 'success' ? '✅' : entry.outcome === 'failure' ? '❌' : '⏳';
+          recentHtml += '<div class="proactive-entry">' +
+                       '<span class="entry-time">' + new Date(entry.timestamp).toLocaleString() + '</span>' +
+                       '<span class="entry-outcome">' + outcomeIcon + '</span>' +
+                       '<span class="entry-content">' + entry.content + '</span>' +
+                       '</div>';
+        }});
+      }}
+      document.getElementById('proactive-recent').innerHTML = recentHtml;
+    }})
+    .catch(err => {{
+      document.getElementById('proactive-wal').innerHTML = '<div class="empty">Failed to load proactive data</div>';
+    }});
+}}
+
+function loadHealthData() {{
+  fetch('/api/health')
+    .then(r => r.json())
+    .then(data => {{
+      if (data.error) {{
+        document.getElementById('health-components').innerHTML = '<div class="empty">' + data.error + '</div>';
+        return;
+      }}
+      
+      /* Components */
+      let componentsHtml = '<h3>System Components</h3>';
+      if (data.components) {{
+        for (const [name, comp] of Object.entries(data.components)) {{
+          componentsHtml += '<div class="health-component">' +
+                           '<div class="component-status">' + comp.emoji + '</div>' +
+                           '<div class="component-name">' + name.replace('_', ' ') + '</div>' +
+                           '<div class="component-message">' + (comp.message || 'OK') + '</div>' +
+                           '</div>';
         }}
       }}
-      html += '</div>';
-      if(d.metrics) {{
-        html += `<div style="color:var(--dim);font-size:0.8rem;margin-top:0.5rem;">Heartbeats: ${{d.metrics.total_heartbeats || 0}} | Incidents: ${{d.metrics.total_incidents || 0}} | Healthy streak: ${{d.metrics.consecutive_healthy || 0}}</div>`;
+      document.getElementById('health-components').innerHTML = componentsHtml;
+      
+      /* Metrics */
+      const metrics = data.metrics || {{}};
+      document.getElementById('health-metrics').innerHTML = 
+        '<h3>System Metrics</h3>' +
+        '<div class="health-metric"><strong>Heartbeats:</strong> ' + (metrics.total_heartbeats || 0) + '</div>' +
+        '<div class="health-metric"><strong>Incidents:</strong> ' + (metrics.total_incidents || 0) + '</div>' +
+        '<div class="health-metric"><strong>Healthy Streak:</strong> ' + (metrics.consecutive_healthy || 0) + '</div>' +
+        '<div class="health-metric"><strong>24h Heartbeats:</strong> ' + (data.heartbeat_count_24h || 0) + '</div>';
+      
+      /* Recent incidents */
+      const incidents = data.recent_incidents || [];
+      let incidentsHtml = '<h3>Recent Incidents</h3>';
+      if (incidents.length === 0) {{
+        incidentsHtml += '<div class="empty">No recent incidents</div>';
+      }} else {{
+        incidents.forEach(incident => {{
+          const resolvedIcon = incident.resolved ? '✅' : '❌';
+          incidentsHtml += '<div class="health-incident">' +
+                          '<span class="incident-id">' + incident.id + '</span>' +
+                          '<span class="incident-status">' + resolvedIcon + '</span>' +
+                          '<span class="incident-desc">' + incident.description + '</span>' +
+                          '</div>';
+        }});
       }}
-      document.getElementById('health-status').innerHTML = html;
-    }}).catch(()=>{{document.getElementById('health-status').innerHTML='<div class="empty">Health monitor unavailable</div>';}});
-  </script>
-</div>
+      document.getElementById('health-incidents').innerHTML = incidentsHtml;
+    }})
+    .catch(err => {{
+      document.getElementById('health-components').innerHTML = '<div class="empty">Failed to load health data</div>';
+    }});
+}}
 
-<footer>{get_agent_name()} {get_agent_emoji()} × Intrusive Thoughts v1.0 — refreshed {datetime.now().strftime('%Y-%m-%d %H:%M')}</footer>
+/* Load initial tab data */
+document.addEventListener('DOMContentLoaded', function() {{
+  loadMemoryData();
+}});
+</script>
+
+<footer>{get_agent_name()} {get_agent_emoji()} × Intrusive Thoughts Dashboard v2 — refreshed {datetime.now().strftime('%Y-%m-%d %H:%M')}</footer>
 </body>
 </html>"""
 
@@ -626,24 +823,114 @@ class DashboardHandler(SimpleHTTPRequestHandler):
             self.send_header("Content-Type", "application/json")
             self.end_headers()
             self.wfile.write(json.dumps(data, default=str).encode())
-        elif self.path == "/api/decisions":
-            decisions = load_decisions()
+        elif self.path == "/api/memory":
+            try:
+                from memory_system import MemorySystem
+                ms = MemorySystem()
+                # Get all memories from all stores
+                episodic = ms._load_store(ms.episodic_path)
+                semantic = ms._load_store(ms.semantic_path)
+                procedural = ms._load_store(ms.procedural_path)
+                working = ms._load_store(ms.working_path)
+                
+                # Add memory type and calculate strength for episodic memories
+                current_time = ms._get_timestamp()
+                memories = []
+                
+                for memory in episodic:
+                    strength = ms._calculate_decay(
+                        memory["timestamp"],
+                        memory["decay_rate"],
+                        memory["reinforcement_count"]
+                    )
+                    memory_data = memory.copy()
+                    memory_data["memory_type"] = "episodic"
+                    memory_data["strength"] = strength
+                    memories.append(memory_data)
+                
+                for memory in semantic:
+                    memory_data = memory.copy()
+                    memory_data["memory_type"] = "semantic"
+                    memory_data["strength"] = memory.get("strength", 1.0)
+                    memories.append(memory_data)
+                
+                for memory in procedural:
+                    memory_data = memory.copy()
+                    memory_data["memory_type"] = "procedural"
+                    memory_data["strength"] = min(1.0, memory.get("reinforcement_count", 1) / 10.0)
+                    memories.append(memory_data)
+                
+                for memory in working:
+                    memory_data = memory.copy()
+                    memory_data["memory_type"] = "working"
+                    memory_data["strength"] = 1.0  # Working memory is always at full strength
+                    memories.append(memory_data)
+                
+                data = {
+                    "memories": memories,
+                    "stats": ms.get_stats()
+                }
+            except Exception as e:
+                data = {"error": f"memory system unavailable: {e}"}
             self.send_response(200)
             self.send_header("Content-Type", "application/json")
             self.end_headers()
-            self.wfile.write(json.dumps(decisions[-50:], default=str).encode())  # Last 50 decisions
-        elif self.path == "/api/rejections":
-            rejections = load_rejections()
+            self.wfile.write(json.dumps(data, default=str).encode())
+        elif self.path == "/api/trust":
+            try:
+                from trust_system import TrustSystem
+                ts = TrustSystem()
+                data = ts.get_stats()
+                # Add trust events/history
+                history = ts.get_history(limit=20)
+                data["recent_events"] = history
+            except Exception as e:
+                data = {"error": f"trust system unavailable: {e}"}
             self.send_response(200)
             self.send_header("Content-Type", "application/json")
             self.end_headers()
-            self.wfile.write(json.dumps(rejections[-50:], default=str).encode())  # Last 50 rejections
-        elif self.path == "/api/stream":
-            stream_data = load_stream_data(50)
+            self.wfile.write(json.dumps(data, default=str).encode())
+        elif self.path == "/api/evolution":
+            try:
+                from self_evolution import SelfEvolutionSystem
+                se = SelfEvolutionSystem()
+                stats = se.get_stats()
+                # Add evolution history and patterns
+                data = {
+                    "stats": stats,
+                    "evolution_history": se.learnings.get("evolution_history", []),
+                    "patterns": se.learnings.get("patterns", []),
+                    "weight_adjustments": se.get_learned_weights()
+                }
+            except Exception as e:
+                data = {"error": f"evolution system unavailable: {e}"}
             self.send_response(200)
             self.send_header("Content-Type", "application/json")
             self.end_headers()
-            self.wfile.write(json.dumps(stream_data, default=str).encode())
+            self.wfile.write(json.dumps(data, default=str).encode())
+        elif self.path == "/api/proactive":
+            try:
+                from proactive import ProactiveAgent
+                pa = ProactiveAgent()
+                stats = pa.wal_stats()
+                # Add buffer status
+                buffer_data = pa._load_buffer()
+                pa._prune_expired_items(buffer_data)
+                data = {
+                    "wal_stats": stats,
+                    "buffer": {
+                        "active_items": buffer_data["active_items"],
+                        "completed_count": len(buffer_data["completed"]),
+                        "expired_count": len(buffer_data["expired"])
+                    },
+                    "recent_entries": pa.wal_search(limit=10)
+                }
+            except Exception as e:
+                data = {"error": f"proactive system unavailable: {e}"}
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.end_headers()
+            self.wfile.write(json.dumps(data, default=str).encode())
         else:
             self.send_response(404)
             self.end_headers()
@@ -653,5 +940,5 @@ class DashboardHandler(SimpleHTTPRequestHandler):
 
 
 if __name__ == "__main__":
-    print(f"🧠 Intrusive Thoughts Dashboard running at http://localhost:{PORT}")
+    print(f"🧠 Intrusive Thoughts Dashboard v2 running at http://localhost:{PORT}")
     HTTPServer(("0.0.0.0", PORT), DashboardHandler).serve_forever()
