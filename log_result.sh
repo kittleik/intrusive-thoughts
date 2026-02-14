@@ -228,3 +228,9 @@ if os.path.exists(achievements_script):
         pass
 
 PYEOF
+
+# Track genuineness data
+GENUINENESS_SCRIPT="$DATA_DIR/genuineness.py"
+if [[ -f "$GENUINENESS_SCRIPT" ]]; then
+    python3 "$GENUINENESS_SCRIPT" track "$MOOD" "$THOUGHT_ID" "$SUMMARY" "$ENERGY" "$VIBE" 2>/dev/null || true
+fi

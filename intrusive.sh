@@ -23,6 +23,10 @@ case "${1:-}" in
     wizard)
         exec "$SCRIPT_DIR/wizard.sh"
         ;;
+    genuineness)
+        shift
+        exec python3 "$SCRIPT_DIR/genuineness.py" "${@:-report}"
+        ;;
     audit|--audit)
         echo "🔍 Security Audit - Intrusive Thoughts"
         echo ""
@@ -55,6 +59,8 @@ case "${1:-}" in
         echo "  intrusive.sh suggest-thought \"desc\" Generate a thought JSON from description"
         echo "  intrusive.sh wizard              Run the interactive setup wizard" 
         echo "  intrusive.sh audit               Show security audit information"
+        echo "  intrusive.sh genuineness         Show genuineness report"
+        echo "  intrusive.sh genuineness --json  Genuineness report as JSON"
         echo "  intrusive.sh help                Show this help"
         echo ""
         exit 0
