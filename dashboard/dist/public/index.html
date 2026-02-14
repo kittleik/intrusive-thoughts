@@ -848,6 +848,37 @@ async function loadNightData() {
   }
 }
 
+async function loadSchedule() {
+  try {
+    const response = await fetch('/api/schedule');
+    const data = await response.json();
+    const el = document.getElementById('schedule-content');
+    if (!el) return;
+    if (!data || !data.slots || data.slots.length === 0) {
+      el.innerHTML = '<div class="empty">No schedule generated yet — runs after morning mood ritual</div>';
+      return;
+    }
+    const moodEmojis = {hyperfocus:'🔥',curious:'🔍',social:'💬',cozy:'☕',chaotic:'⚡',philosophical:'🌌',restless:'🦞',determined:'🎯'};
+    const emoji = moodEmojis[data.mood_id] || '🧠';
+    el.innerHTML = `
+      <div style="margin-bottom: 1rem; color: var(--accent);">
+        📅 <strong>${data.date}</strong> — ${emoji} ${data.mood_id} mood (${data.pattern} pattern)
+      </div>
+      <div style="margin-bottom: 1rem;">
+        ${data.slots.map(s => `
+          <div class="stream-item" style="padding: 0.6rem; margin-bottom: 0.3rem; background: var(--border); border-radius: 6px; display: flex; align-items: center;">
+            <span style="font-size: 1.2rem; margin-right: 0.8rem;">⏰</span>
+            <span><strong>${s.time}</strong> — scheduled impulse check-in</span>
+          </div>
+        `).join('')}
+      </div>
+      <div style="color: var(--dim); font-size: 0.85rem;">Generated at ${new Date(data.generated_at).toLocaleTimeString()}</div>`;
+  } catch (e) {
+    const el = document.getElementById('schedule-content');
+    if (el) el.innerHTML = '<div class="empty">Could not load schedule</div>';
+  }
+}
+
 async function loadJournalList() {
   try {
     const response = await fetch('/api/journal/list');
@@ -882,6 +913,7 @@ async function loadAllData() {
     loadStreaks(),
     loadNightData(),
     loadJournalList(),
+    loadSchedule(),
   ]);
 }
 
