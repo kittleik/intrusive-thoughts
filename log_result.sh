@@ -10,15 +10,17 @@ source "$SCRIPT_DIR/load_config.sh"
 HISTORY_FILE="$DATA_DIR/history.json"
 MOOD_FILE="$DATA_DIR/today_mood.json"
 
-# Parse arguments, checking for --shipped flag
+# Parse arguments, checking for --shipped and --skills flags
 SHIPPED=false
+SKILLS_USED=""
 ARGS=()
-for arg in "$@"; do
-    if [[ "$arg" == "--shipped" ]]; then
-        SHIPPED=true
-    else
-        ARGS+=("$arg")
-    fi
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --shipped) SHIPPED=true; shift ;;
+        --skills) SKILLS_USED="$2"; shift 2 ;;
+        --skills=*) SKILLS_USED="${1#--skills=}"; shift ;;
+        *) ARGS+=("$1"); shift ;;
+    esac
 done
 
 THOUGHT_ID="${ARGS[0]:-unknown}"
@@ -46,7 +48,8 @@ entry = {
     'summary': '''$SUMMARY''',
     'energy': '$ENERGY',
     'vibe': '$VIBE',
-    'shipped': $SHIPPED
+    'shipped': $SHIPPED,
+    'skills_used': [s.strip() for s in '$SKILLS_USED'.split(',') if s.strip()]
 }
 history.append(entry)
 history = history[-500:]

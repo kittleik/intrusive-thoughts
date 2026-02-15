@@ -866,6 +866,9 @@
                 <span>${formatTime(item.timestamp)}</span>
               </div>
               <div class="thought-content">${item.summary || item.content || item.thought || '...'}</div>
+              ${item.skills_used && item.skills_used.length > 0 ?
+                `<div style="margin-top: 0.3rem; font-size: 0.75rem; color: var(--mood-color);">🔧 ${item.skills_used.join(', ')}</div>` : ''
+              }
               ${item.genuineness_score !== undefined ? 
                 `<span class="genuineness-score">${Math.round(item.genuineness_score * 100)}% genuine</span>` : ''
               }

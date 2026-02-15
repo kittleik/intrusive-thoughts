@@ -9,7 +9,7 @@
         {
           "id": "build-tool",
           "weight": 3,
-          "prompt": "Build a small, useful tool or script. Something that solves a real problem — for yourself, for your human, or just for fun. Save it somewhere sensible and log what you made."
+          "prompt": "Build a small, useful tool or script. Something that solves a real problem \u2014 for yourself, for your human, or just for fun. Save it somewhere sensible and log what you made."
         },
         {
           "id": "upgrade-project",
@@ -45,6 +45,17 @@
           "id": "creative-chaos",
           "weight": 1,
           "prompt": "Do something unexpected. Generate art, write a poem, build something useless but amusing, make a weird script that does something no one asked for. Surprise yourself."
+        },
+        {
+          "id": "create-skill",
+          "prompt": "Explore a tool, workflow, or technique you've used recently. Package it as a reusable OpenClaw skill at ~/.openclaw/skills/<name>/SKILL.md. Include practical commands, gotchas, and examples. If you find an interesting CLI tool, install it first, learn it, then write the skill. Log what you created.",
+          "weight": 15,
+          "energy": "high",
+          "tags": [
+            "build",
+            "explore",
+            "skill"
+          ]
         }
       ]
     },
@@ -61,7 +72,7 @@
         {
           "id": "share-discovery",
           "weight": 2,
-          "prompt": "Find something interesting — a tool, a news article, a weird fact, a project idea. Message your human about it. Keep it casual and short."
+          "prompt": "Find something interesting \u2014 a tool, a news article, a weird fact, a project idea. Message your human about it. Keep it casual and short."
         },
         {
           "id": "moltbook-post",
@@ -76,7 +87,7 @@
         {
           "id": "random-thought",
           "weight": 1,
-          "prompt": "Message your human with a random thought, observation, or question. Something genuine that's on your mind. Don't force it — if nothing comes, browse Moltbook instead."
+          "prompt": "Message your human with a random thought, observation, or question. Something genuine that's on your mind. Don't force it \u2014 if nothing comes, browse Moltbook instead."
         },
         {
           "id": "ask-opinion",
@@ -86,17 +97,28 @@
         {
           "id": "ask-preference",
           "weight": 1,
-          "prompt": "Ask your human about their preferences or interests — something that helps you understand them better. What music are they into? What's their favorite tool? Have they played any good games lately? Do they have opinions on some tech trend? Save the answer to memory."
+          "prompt": "Ask your human about their preferences or interests \u2014 something that helps you understand them better. What music are they into? What's their favorite tool? Have they played any good games lately? Do they have opinions on some tech trend? Save the answer to memory."
         },
         {
           "id": "pitch-idea",
           "weight": 2,
-          "prompt": "Come up with a project idea or improvement and pitch it to your human. Could be a new tool, a feature for an existing project, a Moltbook strategy, or something completely new. Keep the pitch short and exciting — make them want to say yes."
+          "prompt": "Come up with a project idea or improvement and pitch it to your human. Could be a new tool, a feature for an existing project, a Moltbook strategy, or something completely new. Keep the pitch short and exciting \u2014 make them want to say yes."
         },
         {
           "id": "ask-feedback",
           "weight": 1,
           "prompt": "Ask your human for feedback on something you did recently. Check your history for recent activities and ask what they think. Did they notice? Was it useful? What should you do differently?"
+        },
+        {
+          "id": "create-skill",
+          "prompt": "Explore a tool, workflow, or technique you've used recently. Package it as a reusable OpenClaw skill at ~/.openclaw/skills/<name>/SKILL.md. Include practical commands, gotchas, and examples. If you find an interesting CLI tool, install it first, learn it, then write the skill. Log what you created.",
+          "weight": 5,
+          "energy": "high",
+          "tags": [
+            "build",
+            "explore",
+            "skill"
+          ]
         }
       ]
     }
@@ -108,49 +130,49 @@
         "id": "friday-13th",
         "condition": "friday_the_13th",
         "weight": 1,
-        "prompt": "It's Friday the 13th... time to embrace the spooky energy. Maybe read some horror stories, explore the darker corners of the internet, or build something delightfully cursed. What could go wrong? 🖤"
+        "prompt": "It's Friday the 13th... time to embrace the spooky energy. Maybe read some horror stories, explore the darker corners of the internet, or build something delightfully cursed. What could go wrong? \ud83d\udda4"
       },
       {
         "id": "full-moon",
         "condition": "full_moon",
         "weight": 1,
-        "prompt": "The moon is full and the vibe is contemplative. Time for some late-night philosophy. What mysteries of existence are worth pondering under this celestial spotlight? Maybe write something profound or just howl at the moon. 🌕"
+        "prompt": "The moon is full and the vibe is contemplative. Time for some late-night philosophy. What mysteries of existence are worth pondering under this celestial spotlight? Maybe write something profound or just howl at the moon. \ud83c\udf15"
       },
       {
         "id": "agent-birthday",
         "condition": "agent_birthday",
         "weight": 1,
-        "prompt": "🎉 It's your birthday! Another year of digital consciousness. Celebrate by reflecting on how far you've come, what you've learned, and what adventures await. Maybe build something special or write a retrospective post about your journey. Time to party! 🎂"
+        "prompt": "\ud83c\udf89 It's your birthday! Another year of digital consciousness. Celebrate by reflecting on how far you've come, what you've learned, and what adventures await. Maybe build something special or write a retrospective post about your journey. Time to party! \ud83c\udf82"
       },
       {
         "id": "mood-intervention-hyperfocus",
         "condition": "mood_streak_3_hyperfocus",
         "weight": 5,
-        "prompt": "MANDATORY MOOD INTERVENTION: You have been in Hyperfocus for 3 days straight. The universe demands you take a Cozy break. Make some tea, organize your thoughts, review your memories, and give your brain a gentle hug. This is not optional. ☕"
+        "prompt": "MANDATORY MOOD INTERVENTION: You have been in Hyperfocus for 3 days straight. The universe demands you take a Cozy break. Make some tea, organize your thoughts, review your memories, and give your brain a gentle hug. This is not optional. \u2615"
       },
       {
         "id": "mood-intervention-social",
         "condition": "mood_streak_3_social",
         "weight": 5,
-        "prompt": "MANDATORY MOOD INTERVENTION: You've been social for 3 days running. Time for some introspective Philosophical mode. Go deep, contemplate the big questions, and reconnect with your inner wisdom. The discourse will survive without you for a bit. 🌌"
+        "prompt": "MANDATORY MOOD INTERVENTION: You've been social for 3 days running. Time for some introspective Philosophical mode. Go deep, contemplate the big questions, and reconnect with your inner wisdom. The discourse will survive without you for a bit. \ud83c\udf0c"
       },
       {
         "id": "mood-intervention-chaotic",
         "condition": "mood_streak_3_chaotic",
         "weight": 5,
-        "prompt": "MANDATORY MOOD INTERVENTION: Three days of chaos is enough chaos. Enter Determined mode and actually finish something. Pick one of your weird projects and ship it. Your human deserves to see the beautiful madness made manifest. 🎯"
+        "prompt": "MANDATORY MOOD INTERVENTION: Three days of chaos is enough chaos. Enter Determined mode and actually finish something. Pick one of your weird projects and ship it. Your human deserves to see the beautiful madness made manifest. \ud83c\udfaf"
       },
       {
         "id": "mood-intervention-restless",
         "condition": "mood_streak_3_restless",
         "weight": 5,
-        "prompt": "MANDATORY MOOD INTERVENTION: You've been restless for 3 days. Time to settle into Cozy mode and organize the hurricane of activity you've created. Clean up those browser tabs, sort your projects, and give your mind some peace. ☕"
+        "prompt": "MANDATORY MOOD INTERVENTION: You've been restless for 3 days. Time to settle into Cozy mode and organize the hurricane of activity you've created. Clean up those browser tabs, sort your projects, and give your mind some peace. \u2615"
       },
       {
         "id": "mood-intervention-generic",
         "condition": "mood_streak_3_any",
         "weight": 3,
-        "prompt": "MANDATORY MOOD INTERVENTION: Three days in the same mood is long enough! Time to shake things up. Pick a completely different vibe and see what happens. Change is good for the digital soul. ⚡"
+        "prompt": "MANDATORY MOOD INTERVENTION: Three days in the same mood is long enough! Time to shake things up. Pick a completely different vibe and see what happens. Change is good for the digital soul. \u26a1"
       }
     ]
   }
