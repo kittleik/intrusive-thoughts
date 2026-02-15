@@ -283,6 +283,22 @@ mkdir -p "$LOG_DIR"
 
 MOOD="${1:-day}"
 
+# Min-interval guard: skip if last pick was less than 30 seconds ago
+DECISIONS_FILE="$LOG_DIR/decisions.json"
+if [[ -f "$DECISIONS_FILE" ]]; then
+    LAST_TIMESTAMP=$(jq -r '.[-1].timestamp // empty' "$DECISIONS_FILE" 2>/dev/null)
+    if [[ -n "$LAST_TIMESTAMP" ]]; then
+        LAST_EPOCH=$(date -d "$LAST_TIMESTAMP" +%s 2>/dev/null || echo "0")
+        NOW_EPOCH=$(date +%s)
+        TIME_DIFF=$((NOW_EPOCH - LAST_EPOCH))
+        
+        if [[ $TIME_DIFF -lt 30 ]]; then
+            echo "Skipping pick - last decision was $TIME_DIFF seconds ago (minimum 30 seconds required)" >&2
+            exit 0
+        fi
+    fi
+fi
+
 # Pick a weighted random thought, influenced by today's mood and streak weights  
 # Use temporary file to capture all output reliably
 TEMP_OUTPUT="/tmp/intrusive_output_$$.txt"
@@ -352,6 +368,36 @@ for t in mood_data['thoughts']:
     original_weight = weight
     skip_reasons = []
     boost_reasons = []
+    
+    # Check Moltbook ban status before processing moltbook-related thoughts
+    if 'moltbook' in thought_id:
+        try:
+            with open('$SCRIPT_DIR/moltbook_status.json') as f:
+                moltbook_status = json.load(f)
+                if moltbook_status.get('banned', False):
+                    from datetime import datetime
+                    ban_expires = moltbook_status.get('ban_expires')
+                    if ban_expires:
+                        ban_expiry_dt = datetime.fromisoformat(ban_expires.replace('Z', '+00:00'))
+                        if datetime.now(ban_expiry_dt.tzinfo) < ban_expiry_dt:
+                            # Ban is still active
+                            weight = 0
+                            expiry_str = ban_expiry_dt.strftime('%Y-%m-%d %H:%M')
+                            reason = moltbook_status.get('reason', 'account restriction')
+                            skip_reasons.append(f'Moltbook account suspended until {expiry_str} ({reason})')
+                        else:
+                            # Ban has expired, automatically unban
+                            moltbook_status['banned'] = False
+                            with open('$SCRIPT_DIR/moltbook_status.json', 'w') as fw:
+                                json.dump(moltbook_status, fw, indent=2)
+                    else:
+                        # No expiry date means permanent ban
+                        weight = 0
+                        reason = moltbook_status.get('reason', 'account restriction')
+                        skip_reasons.append(f'Moltbook account permanently suspended ({reason})')
+        except (FileNotFoundError, json.JSONDecodeError, KeyError):
+            # If status file doesn't exist or is malformed, assume no ban
+            pass
     
     # Apply mood bias if we have a mood set
     if today_mood:
@@ -557,8 +603,8 @@ try:
 
     decisions.append(decision)
 
-    # Keep only last 1000 entries to prevent file from growing too large  
-    decisions = decisions[-1000:]
+    # Keep only last 100 entries to prevent file from growing too large  
+    decisions = decisions[-100:]
 
     with open(decisions_file, 'w') as f:
         json.dump(decisions, f, indent=2)
