@@ -424,60 +424,224 @@ def compute_surprise_index(data: dict) -> Tuple[float, str]:
 
 
 # ---------------------------------------------------------------------------
-# Real-time Genuineness Check
+# Real-time Genuineness Check (Issue #8)
 # ---------------------------------------------------------------------------
 
-def check_genuineness(thought_prompt: str, mood: dict) -> Tuple[float, str]:
+# Performative phrase patterns — things that sound good but mean nothing
+VIRTUE_SIGNAL_PHRASES = [
+    "just wanted to share",
+    "thought you might",
+    "hope this helps",
+    "spreading positivity",
+    "making the world",
+    "giving back",
+    "pay it forward",
+    "random act of kindness",
+]
+
+EMPTY_PROMISE_PHRASES = [
+    "i'll definitely",
+    "going to start",
+    "planning to",
+    "will absolutely",
+    "committed to",
+    "promise to",
+    "from now on",
+]
+
+ENGAGEMENT_BAIT_PHRASES = [
+    "what do you think",
+    "am i right",
+    "hot take",
+    "unpopular opinion",
+    "controversial but",
+    "let that sink in",
+    "change my mind",
+    "who else",
+]
+
+# Mood ↔ thought coherence map: which thought categories feel genuine per mood
+MOOD_THOUGHT_COHERENCE = {
+    'chaotic':       {'explore': 0.9, 'reflect': 0.8, 'build': 0.5, 'social': 0.4, 'pitch': 0.7},
+    'cozy':          {'reflect': 0.9, 'social': 0.7, 'explore': 0.5, 'build': 0.4, 'pitch': 0.3},
+    'philosophical': {'reflect': 0.9, 'explore': 0.7, 'build': 0.5, 'social': 0.4, 'pitch': 0.6},
+    'hyperfocus':    {'build': 0.9, 'explore': 0.6, 'reflect': 0.3, 'social': 0.2, 'pitch': 0.4},
+    'social':        {'social': 0.9, 'pitch': 0.7, 'reflect': 0.5, 'explore': 0.4, 'build': 0.3},
+    'restless':      {'explore': 0.9, 'build': 0.7, 'pitch': 0.6, 'social': 0.5, 'reflect': 0.2},
+    'nocturnal':     {'reflect': 0.9, 'explore': 0.7, 'build': 0.6, 'social': 0.3, 'pitch': 0.4},
+    'creative':      {'reflect': 0.8, 'explore': 0.8, 'build': 0.7, 'pitch': 0.6, 'social': 0.5},
+}
+
+GENUINENESS_FILTER_LOG = SCRIPT_DIR / "log" / "genuineness_filter.log"
+
+
+def _detect_performative_phrases(text: str) -> List[Tuple[str, str]]:
     """
-    Check if a thought prompt feels performative for the current mood.
-    Returns (genuineness_score 0-1, explanation)
+    Scan text for performative patterns.
+    Returns list of (phrase_found, category).
+    """
+    text_lower = text.lower()
+    hits = []
+    for phrase in VIRTUE_SIGNAL_PHRASES:
+        if phrase in text_lower:
+            hits.append((phrase, "virtue_signal"))
+    for phrase in EMPTY_PROMISE_PHRASES:
+        if phrase in text_lower:
+            hits.append((phrase, "empty_promise"))
+    for phrase in ENGAGEMENT_BAIT_PHRASES:
+        if phrase in text_lower:
+            hits.append((phrase, "engagement_bait"))
+    return hits
+
+
+def _check_repetition(thought_id: str, lookback: int = 10) -> Tuple[float, str]:
+    """
+    Check how recently this thought was picked.
+    Returns (penalty 0-0.4, reason).
+    """
+    history = load_history()
+    if not history:
+        return 0.0, ""
+
+    recent = history[-lookback:]
+    recent_ids = [e.get("thought_id", "") for e in recent]
+    count = recent_ids.count(thought_id)
+
+    if count == 0:
+        return 0.0, ""
+    elif count == 1:
+        return 0.1, f"'{thought_id}' picked once in last {lookback} actions"
+    elif count == 2:
+        return 0.25, f"'{thought_id}' picked twice in last {lookback} — getting repetitive"
+    else:
+        return 0.4, f"'{thought_id}' picked {count}x in last {lookback} — engagement rut"
+
+
+def _mood_coherence_score(thought_id: str, mood_name: str) -> Tuple[float, str]:
+    """
+    Score how coherent this thought category is with the current mood.
+    Returns (score 0-1, reason).
+    """
+    category = categorize_thought(thought_id)
+
+    # Find matching mood key
+    matched_mood = None
+    for mood_key in MOOD_THOUGHT_COHERENCE:
+        if mood_key in mood_name:
+            matched_mood = mood_key
+            break
+
+    if not matched_mood:
+        return 0.5, f"No coherence data for mood '{mood_name}'"
+
+    coherence = MOOD_THOUGHT_COHERENCE[matched_mood].get(category, 0.5)
+    if coherence >= 0.7:
+        reason = f"'{category}' is a natural fit for {mood_name} mood"
+    elif coherence <= 0.3:
+        reason = f"'{category}' feels forced in {mood_name} mood"
+    else:
+        reason = f"'{category}' is neutral for {mood_name} mood"
+
+    return coherence, reason
+
+
+def _log_filter_result(thought_id: str, score: float, reasons: List[str],
+                       mood_name: str, filtered: bool):
+    """Append a line to the genuineness filter log."""
+    try:
+        GENUINENESS_FILTER_LOG.parent.mkdir(parents=True, exist_ok=True)
+        ts = datetime.now().isoformat()
+        status = "FILTERED" if filtered else "PASSED"
+        reason_str = "; ".join(reasons) if reasons else "no flags"
+        line = f"{ts} | {status} | {thought_id} | score={score:.2f} | mood={mood_name} | {reason_str}\n"
+        with open(GENUINENESS_FILTER_LOG, "a") as f:
+            f.write(line)
+    except Exception:
+        pass  # Never crash the pipeline over logging
+
+
+def check_genuineness(thought_prompt: str, mood: dict,
+                      thought_id: str = "") -> Tuple[float, str]:
+    """
+    Analyse a thought/action candidate for performative behaviour.
+
+    Scoring (0-1):
+      - Start at 0.7 (benefit of the doubt)
+      - Subtract for performative phrases, repetition, mood incoherence
+      - Add small bonus for mood-aligned content
+
+    Returns (genuineness_score 0-1, explanation).
     """
     if not mood or not thought_prompt:
         return 0.5, "Insufficient data"
-    
+
     mood_name = mood.get('name', '').lower()
+    reasons: List[str] = []
+    score = 0.7
+
+    # --- 1. Performative phrase detection ---
+    hits = _detect_performative_phrases(thought_prompt)
+    if hits:
+        penalty = min(0.3, len(hits) * 0.1)
+        score -= penalty
+        categories_hit = set(cat for _, cat in hits)
+        reasons.append(f"performative phrases ({', '.join(categories_hit)})")
+
+    # --- 2. Repetition check ---
+    if thought_id:
+        rep_penalty, rep_reason = _check_repetition(thought_id)
+        if rep_penalty > 0:
+            score -= rep_penalty
+            reasons.append(rep_reason)
+
+    # --- 3. Mood ↔ thought coherence ---
+    if thought_id:
+        coherence, coh_reason = _mood_coherence_score(thought_id, mood_name)
+        # Shift score toward coherence value (±0.15 max)
+        adjustment = (coherence - 0.5) * 0.3
+        score += adjustment
+        if abs(adjustment) > 0.05:
+            reasons.append(coh_reason)
+
+    # --- 4. Keyword alignment (legacy, lighter weight) ---
     prompt_lower = thought_prompt.lower()
-    
-    # Simple heuristics for performative patterns
-    performative_patterns = {
+    performative_kw = {
         'chaotic': ['organize', 'systematic', 'methodical'],
-        'cozy': ['aggressive', 'disruptive'], 
+        'cozy': ['aggressive', 'disruptive'],
         'philosophical': ['quick', 'fast', 'minimal'],
         'hyperfocus': ['casual', 'random', 'distract'],
         'social': ['alone', 'isolate'],
-        'restless': ['slow', 'patient', 'wait']
+        'restless': ['slow', 'patient', 'wait'],
     }
-    
-    genuine_patterns = {
+    genuine_kw = {
         'chaotic': ['creative', 'experiment', 'new'],
         'cozy': ['comfortable', 'gentle', 'warm'],
         'philosophical': ['deep', 'meaning', 'reflect'],
         'hyperfocus': ['build', 'focus', 'concentrate'],
         'social': ['share', 'connect', 'interact'],
-        'restless': ['energy', 'action', 'move']
+        'restless': ['energy', 'action', 'move'],
     }
-    
-    score = 0.5
-    reasons = []
-    
-    # Check for mood alignment
-    for mood_key in performative_patterns:
+    for mood_key in performative_kw:
         if mood_key in mood_name:
-            for bad_word in performative_patterns[mood_key]:
-                if bad_word in prompt_lower:
-                    score -= 0.2
-                    reasons.append(f"'{bad_word}' conflicts with {mood_name}")
-            
-            for good_word in genuine_patterns[mood_key]:
-                if good_word in prompt_lower:
-                    score += 0.15
-                    reasons.append(f"'{good_word}' aligns with {mood_name}")
-    
+            for word in performative_kw[mood_key]:
+                if word in prompt_lower:
+                    score -= 0.1
+                    reasons.append(f"'{word}' conflicts with {mood_name}")
+            for word in genuine_kw.get(mood_key, []):
+                if word in prompt_lower:
+                    score += 0.05
+                    reasons.append(f"'{word}' aligns with {mood_name}")
+
     score = max(0.0, min(1.0, score))
+    filtered = score < 0.3
+
+    # Log every check
+    _log_filter_result(thought_id or "unknown", score, reasons, mood_name, filtered)
+
     explanation = f"{mood_name} mood | Score: {score:.2f}"
     if reasons:
-        explanation += f" | {'; '.join(reasons[:2])}"
-    
+        explanation += f" | {'; '.join(reasons[:3])}"
+
     return score, explanation
 
 
@@ -720,6 +884,37 @@ def main():
         else:
             print(f"Calibration Score: {score}/100")
             print(detail)
+    elif command == "filter-log":
+        # Show recent genuineness filter decisions
+        if not GENUINENESS_FILTER_LOG.exists():
+            print("No filter log yet.")
+            sys.exit(0)
+        lines = GENUINENESS_FILTER_LOG.read_text().strip().split("\n")
+        n = int(args[1]) if len(args) > 1 and args[1].isdigit() else 20
+        for line in lines[-n:]:
+            print(line)
+    elif command == "check":
+        # Manual check: genuineness.py check <thought_id> <prompt_text>
+        if len(args) < 3:
+            print("Usage: genuineness.py check <thought_id> <prompt_text>")
+            sys.exit(1)
+        thought_id = args[1]
+        prompt_text = " ".join(args[2:])
+        # Load current mood
+        mood = {}
+        try:
+            import json as _json
+            with open(DATA_DIR / "today_mood.json") as f:
+                mood = _json.load(f)
+        except Exception:
+            pass
+        score, reason = check_genuineness(prompt_text, mood, thought_id=thought_id)
+        if as_json:
+            print(json.dumps({"thought_id": thought_id, "score": score, "reason": reason,
+                              "would_filter": score < 0.3}))
+        else:
+            status = "🚫 FILTERED" if score < 0.3 else "✅ PASSED"
+            print(f"{status} | {thought_id} | score={score:.2f} | {reason}")
     elif command == "track":
         # track <mood> <thought_id> <summary> <energy> <vibe> [output_text]
         if len(args) < 6:
