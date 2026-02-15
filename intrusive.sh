@@ -675,14 +675,17 @@ genuineness_reason = 'No check performed'
 try:
     sys.path.append('$SCRIPT_DIR')
     from genuineness import check_genuineness
-    genuineness_score, genuineness_reason = check_genuineness(pick['prompt'], today_mood)
+    genuineness_score, genuineness_reason = check_genuineness(pick['prompt'], today_mood, thought_id=pick['id'])
     
-    # Re-roll if genuineness too low
-    if genuineness_score < 0.3 and len(pool) > 10:
+    # Re-roll if genuineness too low (performative / repetitive / incoherent)
+    genuineness_attempts = 0
+    while genuineness_score < 0.3 and genuineness_attempts < 3 and len(pool) > 10:
+        genuineness_attempts += 1
         remaining = [t for t in pool if t['id'] != pick['id']]
-        if remaining:
-            pick = random.choice(remaining)
-            genuineness_score, genuineness_reason = check_genuineness(pick['prompt'], today_mood)
+        if not remaining:
+            break
+        pick = random.choice(remaining)
+        genuineness_score, genuineness_reason = check_genuineness(pick['prompt'], today_mood, thought_id=pick['id'])
             # Update model hint for new pick
             for level, thoughts in hints.items():
                 if pick['id'] in thoughts:
