@@ -69,3 +69,8 @@ except Exception as e:
 echo ""
 echo "=== CURRENT MOOD FILE ==="
 cat "$SCRIPT_DIR/today_mood.json" 2>/dev/null || echo "no mood set yet"
+
+# Sync mood to OpenClaw workspace for cross-session influence
+if [ -f "$SCRIPT_DIR/update_mood_workspace.sh" ]; then
+    bash "$SCRIPT_DIR/update_mood_workspace.sh"
+fi

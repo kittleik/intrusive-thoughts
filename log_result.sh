@@ -234,3 +234,15 @@ GENUINENESS_SCRIPT="$DATA_DIR/genuineness.py"
 if [[ -f "$GENUINENESS_SCRIPT" ]]; then
     python3 "$GENUINENESS_SCRIPT" track "$MOOD" "$THOUGHT_ID" "$SUMMARY" "$ENERGY" "$VIBE" 2>/dev/null || true
 fi
+
+# Also sync to OpenClaw daily memory for cross-system visibility
+MEMORY_DIR="$HOME/.openclaw/workspace/memory"
+MEMORY_FILE="$MEMORY_DIR/$(date +%Y-%m-%d).md"
+mkdir -p "$MEMORY_DIR"
+
+if [ ! -f "$MEMORY_FILE" ]; then
+    echo "# $(date +%Y-%m-%d) ($(date +%A))" > "$MEMORY_FILE"
+    echo "" >> "$MEMORY_FILE"
+fi
+
+echo "- **$(date +%H:%M)** [$MOOD] $THOUGHT_ID: $SUMMARY (energy=$ENERGY, vibe=$VIBE)" >> "$MEMORY_FILE"
