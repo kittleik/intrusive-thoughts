@@ -205,22 +205,44 @@ def check_dashboard():
 
 
 def check_memory_system():
-    """Check memory system health."""
-    mem_dir = DATA_DIR / "memory_store"
-    if not mem_dir.exists():
-        return set_component_status("memory_system", Status.YELLOW, "memory_store/ not initialized yet")
+    """Check OpenClaw native memory system health."""
+    openclaw_memory_dir = Path("~/.openclaw/workspace/memory").expanduser()
+    memory_md = Path("~/.openclaw/workspace/MEMORY.md").expanduser()
     
     issues = []
-    for fname in ["episodic.json", "semantic.json", "procedural.json"]:
-        p = mem_dir / fname
-        if p.exists():
-            try:
-                json.loads(p.read_text())
-            except json.JSONDecodeError:
-                issues.append(f"{fname} corrupted")
+    
+    # Check if OpenClaw memory directory exists
+    if not openclaw_memory_dir.exists():
+        issues.append("OpenClaw memory dir (~/.openclaw/workspace/memory/) missing")
+    
+    # Check if MEMORY.md exists
+    if not memory_md.exists():
+        issues.append("MEMORY.md missing")
+    else:
+        try:
+            content = memory_md.read_text()
+            if len(content.strip()) < 10:
+                issues.append("MEMORY.md appears empty")
+        except Exception as e:
+            issues.append(f"Cannot read MEMORY.md: {e}")
+    
+    # Check for recent memory files (daily notes)
+    if openclaw_memory_dir.exists():
+        today = datetime.now().strftime("%Y-%m-%d")
+        yesterday = (datetime.now() - timedelta(days=1)).strftime("%Y-%m-%d")
+        
+        recent_files = 0
+        for date_str in [today, yesterday]:
+            daily_file = openclaw_memory_dir / f"{date_str}.md"
+            if daily_file.exists():
+                recent_files += 1
+        
+        if recent_files == 0:
+            issues.append("No recent daily memory files found")
     
     if issues:
-        return set_component_status("memory_system", Status.RED, "; ".join(issues))
+        severity = Status.YELLOW if not any("missing" in i for i in issues) else Status.RED
+        return set_component_status("memory_system", severity, "; ".join(issues))
     return set_component_status("memory_system", Status.GREEN)
 
 
