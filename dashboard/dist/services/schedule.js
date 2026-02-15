@@ -4,42 +4,50 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.getScheduleData = getScheduleData;
-const child_process_1 = require("child_process");
-const util_1 = require("util");
-const config_js_1 = require("./config.js");
 const fs_1 = __importDefault(require("fs"));
-const execAsync = (0, util_1.promisify)(child_process_1.exec);
+const path_1 = __importDefault(require("path"));
+const OPENCLAW_CRON_PATH = path_1.default.join(process.env.HOME || '/home/hk', '.openclaw/cron/jobs.json');
 async function getScheduleData() {
     try {
-        // Run schedule_day.py --json to get schedule data
-        const { stdout, stderr } = await execAsync('python3 schedule_day.py --json', {
-            cwd: (0, config_js_1.getDataDir)(),
-            timeout: 5000
+        // Read actual OpenClaw cron jobs
+        const raw = fs_1.default.readFileSync(OPENCLAW_CRON_PATH, 'utf-8');
+        const parsed = JSON.parse(raw);
+        const jobs = Array.isArray(parsed) ? parsed : (parsed.jobs || []);
+        // Filter to intrusive-thoughts related jobs
+        const itJobs = jobs.filter(j => {
+            const text = (j.payload?.text || j.payload?.message || j.name || '').toLowerCase();
+            return text.includes('mood') || text.includes('intrusive') || text.includes('night') ||
+                text.includes('workshop') || text.includes('drift') || text.includes('pop-in') ||
+                text.includes('morning') || text.includes('thought');
         });
-        if (stderr) {
-            console.error('Schedule system stderr:', stderr);
-        }
-        const data = JSON.parse(stdout);
-        return data;
+        const schedule = itJobs.map(j => ({
+            id: j.id,
+            name: j.name || 'Unnamed job',
+            schedule_type: j.schedule.kind,
+            schedule_expr: j.schedule.expr || (j.schedule.everyMs ? `every ${j.schedule.everyMs / 60000}min` : j.schedule.at || ''),
+            enabled: j.enabled,
+            last_run: j.lastRun || null,
+            last_status: j.lastStatus || null,
+            next_run: j.nextRun || null
+        }));
+        return {
+            schedule,
+            current_phase: getCurrentPhase()
+        };
     }
     catch (error) {
-        console.error('Error running schedule system:', error);
-        // Fallback - try to load today_schedule.json if it exists
-        try {
-            const todaySchedulePath = (0, config_js_1.getFilePath)('today_schedule.json');
-            const data = JSON.parse(fs_1.default.readFileSync(todaySchedulePath, 'utf8'));
-            return {
-                schedule: data.schedule || [],
-                current_phase: data.current_phase || 'unknown'
-            };
-        }
-        catch (fallbackError) {
-            console.error('Error loading today_schedule.json:', fallbackError);
-            return {
-                schedule: [],
-                current_phase: 'unknown'
-            };
-        }
+        console.error('Error reading OpenClaw cron jobs:', error);
+        return { schedule: [], current_phase: getCurrentPhase() };
     }
+}
+function getCurrentPhase() {
+    const hour = new Date().getHours();
+    if (hour >= 3 && hour < 7)
+        return 'night_workshop';
+    if (hour >= 7 && hour < 9)
+        return 'morning_ritual';
+    if (hour >= 9 && hour < 23)
+        return 'daytime';
+    return 'quiet_hours';
 }
 //# sourceMappingURL=schedule.js.map

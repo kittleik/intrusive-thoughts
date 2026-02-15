@@ -46,6 +46,7 @@ export interface HistoryEntry {
   energy?: string;
   vibe?: string;
   completed?: boolean;
+  type?: string;
 }
 
 export interface PickEntry {
@@ -64,7 +65,7 @@ export interface RejectionEntry {
 }
 
 export interface StreamItem {
-  type: 'pick' | 'rejection' | 'mood_drift' | 'activity';
+  type: string;
   timestamp: string;
   thought_id?: string;
   mood?: string;
@@ -125,8 +126,16 @@ export interface PresetData {
 }
 
 export interface SchedulePhase {
-  time: string;
-  phase: string;
+  time?: string;
+  phase?: string;
+  id?: string;
+  name?: string;
+  schedule_type?: string;
+  schedule_expr?: string;
+  enabled?: boolean;
+  last_run?: string | null;
+  last_status?: string | null;
+  next_run?: string | null;
 }
 
 export interface ScheduleData {

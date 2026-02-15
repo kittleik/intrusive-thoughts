@@ -105,31 +105,17 @@ function loadDecisions() {
 }
 function loadStreamData(limit = 50) {
     const streamItems = [];
-    // Try session logs first for richer stream data
-    if ((0, sessions_js_1.hasSessionLogs)()) {
-        try {
-            const sessionStream = (0, sessions_js_1.loadSessionStream)(limit);
-            if (sessionStream.length > 0) {
-                streamItems.push(...sessionStream);
-            }
-        }
-        catch (error) {
-            console.error('Error loading session stream:', error);
-        }
-    }
-    // Add history entries if no session data or as supplement
-    if (streamItems.length === 0) {
-        const history = loadHistory();
-        for (const entry of history.slice(-limit)) {
-            streamItems.push({
-                type: 'activity',
-                timestamp: entry.timestamp || '',
-                thought_id: entry.thought_id || 'unknown',
-                mood: entry.mood || 'unknown',
-                summary: entry.summary || `Completed ${entry.thought_id}`,
-                details: entry
-            });
-        }
+    // Only use intrusive-thoughts own data (history.json), NOT OpenClaw session logs
+    const history = loadHistory();
+    for (const entry of history.slice(-limit)) {
+        streamItems.push({
+            type: entry.type || 'activity',
+            timestamp: entry.timestamp || '',
+            thought_id: entry.thought_id || 'unknown',
+            mood: entry.mood || 'unknown',
+            summary: entry.summary || `Completed ${entry.thought_id}`,
+            details: entry
+        });
     }
     // Add picks
     const picks = loadPicks();
