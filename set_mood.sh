@@ -11,16 +11,38 @@ if [ -f "$SCRIPT_DIR/config.json" ]; then
 fi
 
 echo "=== WEATHER ==="
-# NETWORK: wttr.in weather API - public, no auth, read-only GET request
-curl -s "wttr.in/${LOCATION}?format=%c+%t+%h+%w" 2>/dev/null || echo "weather unavailable"
-echo ""
-# NETWORK: wttr.in weather API - public, no auth, read-only GET request  
-curl -s "wttr.in/${LOCATION}?format=3" 2>/dev/null || echo ""
-
-echo ""
-echo "=== WEATHER DETAIL ==="
-# NETWORK: wttr.in weather API - public, no auth, read-only GET request
-curl -s "wttr.in/${LOCATION}?0T" 2>/dev/null | head -15 || echo "unavailable"
+# Try wttr.in first (5s timeout), fall back to Open-Meteo
+WTTR=$(curl -s --max-time 5 "wttr.in/${LOCATION}?format=%c+%t+%h+%w" 2>/dev/null)
+if [ -n "$WTTR" ] && ! echo "$WTTR" | grep -qi "error\|sorry\|unknown"; then
+    echo "$WTTR"
+    echo ""
+    curl -s --max-time 5 "wttr.in/${LOCATION}?format=3" 2>/dev/null || true
+    echo ""
+    echo "=== WEATHER DETAIL ==="
+    curl -s --max-time 5 "wttr.in/${LOCATION}?0T" 2>/dev/null | head -15 || true
+else
+    echo "(wttr.in unavailable, using Open-Meteo)"
+    # NETWORK: Open-Meteo API - public, no auth, read-only GET request
+    # Default coords: Oslo (59.91, 10.75) — override via config
+    LAT=$(python3 -c "import json; print(json.load(open('$SCRIPT_DIR/config.json')).get('integrations',{}).get('weather',{}).get('latitude', 59.91))" 2>/dev/null || echo "59.91")
+    LON=$(python3 -c "import json; print(json.load(open('$SCRIPT_DIR/config.json')).get('integrations',{}).get('weather',{}).get('longitude', 10.75))" 2>/dev/null || echo "10.75")
+    METEO=$(curl -s --max-time 5 "https://api.open-meteo.com/v1/forecast?latitude=${LAT}&longitude=${LON}&current_weather=true" 2>/dev/null)
+    if [ -n "$METEO" ]; then
+        python3 -c "
+import json, sys
+d = json.loads('''$METEO''')
+w = d.get('current_weather', {})
+codes = {0:'Clear',1:'Mainly clear',2:'Partly cloudy',3:'Overcast',45:'Foggy',48:'Rime fog',
+         51:'Light drizzle',53:'Drizzle',55:'Heavy drizzle',61:'Light rain',63:'Rain',65:'Heavy rain',
+         71:'Light snow',73:'Snow',75:'Heavy snow',77:'Snow grains',80:'Light showers',81:'Showers',
+         85:'Light snow showers',86:'Heavy snow showers',95:'Thunderstorm'}
+desc = codes.get(w.get('weathercode',99), 'Unknown')
+print(f'{desc}, {w[\"temperature\"]}°C, wind {w[\"windspeed\"]}km/h')
+" 2>/dev/null || echo "weather unavailable"
+    else
+        echo "weather unavailable"
+    fi
+fi
 
 echo ""
 echo "=== GLOBAL NEWS ==="
