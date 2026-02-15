@@ -30,16 +30,22 @@ export async function getScheduleData(): Promise<ScheduleData> {
              text.includes('morning') || text.includes('thought');
     });
     
-    const schedule = itJobs.map(j => ({
-      id: j.id,
-      name: j.name || 'Unnamed job',
-      schedule_type: j.schedule.kind,
-      schedule_expr: j.schedule.expr || (j.schedule.everyMs ? `every ${j.schedule.everyMs/60000}min` : j.schedule.at || ''),
-      enabled: j.enabled,
-      last_run: j.lastRun || null,
-      last_status: j.lastStatus || null,
-      next_run: j.nextRun || null
-    }));
+    const schedule = itJobs.map(j => {
+      const state = (j as any).state || {};
+      return {
+        id: j.id,
+        name: j.name || 'Unnamed job',
+        schedule_type: j.schedule.kind,
+        schedule_expr: j.schedule.expr || (j.schedule.everyMs ? `every ${j.schedule.everyMs/60000}min` : j.schedule.at || ''),
+        enabled: j.enabled,
+        last_run: state.lastRunAtMs ? new Date(state.lastRunAtMs).toISOString() : null,
+        last_status: state.lastStatus || null,
+        last_duration_ms: state.lastDurationMs || null,
+        next_run: state.nextRunAtMs ? new Date(state.nextRunAtMs).toISOString() : null,
+        consecutive_errors: state.consecutiveErrors || 0,
+        delete_after_run: (j as any).deleteAfterRun || false
+      };
+    });
     
     return {
       schedule,

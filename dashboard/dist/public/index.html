@@ -721,6 +721,23 @@
       </div>
     </section>
 
+    <!-- Schedule / Cron Jobs -->
+    <section class="section">
+      <div class="section-header">
+        <span class="section-icon">📅</span>
+        <h2 class="section-title">Scheduled Jobs</h2>
+        <span class="section-subtitle">OpenClaw cron jobs</span>
+      </div>
+      
+      <div id="scheduleList" style="display: flex; flex-direction: column; gap: 0.5rem;">
+        <div class="loading">Loading schedule...</div>
+      </div>
+      
+      <div style="margin-top: 1rem; font-size: 0.8rem; color: var(--text-dimmer);">
+        Current phase: <span id="currentPhase">--</span>
+      </div>
+    </section>
+
     <!-- Achievements -->
     <section class="section">
       <div class="section-header">
@@ -799,6 +816,7 @@
           loadMoodTimeline(),
           loadTrustData(),
           loadNightWorkshop(),
+          loadSchedule(),
           loadAchievements(),
           loadHealthStatus()
         ]);
@@ -1015,6 +1033,73 @@
         }
       } catch (error) {
         console.error('Error loading night workshop:', error);
+      }
+    }
+
+    // Load schedule / cron jobs
+    async function loadSchedule() {
+      try {
+        const response = await fetch('/api/schedule');
+        const data = await response.json();
+        
+        const container = document.getElementById('scheduleList');
+        document.getElementById('currentPhase').textContent = data.current_phase || 'unknown';
+        
+        if (data.schedule && data.schedule.length > 0) {
+          container.innerHTML = data.schedule.map(job => {
+            const statusDot = !job.enabled ? '⏸️' : 
+                             job.last_status === 'ok' ? '🟢' : 
+                             job.last_status === 'error' ? '🔴' : '⚪';
+            
+            // Human-readable schedule
+            let scheduleText = job.schedule_expr;
+            if (job.schedule_type === 'cron') {
+              // Parse simple cron patterns
+              const parts = job.schedule_expr.split(' ');
+              if (parts.length >= 5) {
+                const mins = parts[0];
+                const hours = parts[1].split(',').map(h => `${h.padStart(2,'0')}:${mins.padStart(2,'0')}`).join(', ');
+                scheduleText = `Daily at ${hours}`;
+              }
+            } else if (job.schedule_type === 'at') {
+              const d = new Date(job.schedule_expr);
+              scheduleText = `One-shot: ${d.toLocaleTimeString('en-GB', {hour:'2-digit', minute:'2-digit'})} today`;
+            }
+            
+            // Last run info
+            let lastRunText = '';
+            if (job.last_run) {
+              const ago = Math.round((Date.now() - new Date(job.last_run).getTime()) / 60000);
+              const duration = job.last_duration_ms ? `${Math.round(job.last_duration_ms/1000)}s` : '';
+              lastRunText = `Last: ${ago}m ago ${duration ? `(${duration})` : ''}`;
+            }
+            
+            // Next run
+            let nextRunText = '';
+            if (job.next_run) {
+              const next = new Date(job.next_run);
+              const inMin = Math.round((next.getTime() - Date.now()) / 60000);
+              nextRunText = inMin > 0 ? `Next: in ${inMin}m` : 'Due now';
+            }
+            
+            return `
+            <div style="display: flex; align-items: center; gap: 0.8rem; padding: 0.6rem 0.8rem; background: var(--surface); border-radius: 8px; border: 1px solid var(--border); ${!job.enabled ? 'opacity: 0.5;' : ''}">
+              <span style="font-size: 1.1rem;">${statusDot}</span>
+              <div style="flex: 1; min-width: 0;">
+                <div style="font-size: 0.9rem; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${job.name}</div>
+                <div style="font-size: 0.75rem; color: var(--text-dim);">${scheduleText}${job.delete_after_run ? ' (one-shot)' : ''}</div>
+              </div>
+              <div style="text-align: right; font-size: 0.7rem; color: var(--text-dimmer); white-space: nowrap;">
+                ${lastRunText ? `<div>${lastRunText}</div>` : ''}
+                ${nextRunText ? `<div style="color: var(--mood-color);">${nextRunText}</div>` : ''}
+              </div>
+            </div>`;
+          }).join('');
+        } else {
+          container.innerHTML = '<div class="loading">No scheduled jobs found</div>';
+        }
+      } catch (error) {
+        console.error('Error loading schedule:', error);
       }
     }
 
