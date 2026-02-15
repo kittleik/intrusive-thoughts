@@ -1,943 +1,1101 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>🧠 Intrusive Thoughts Dashboard</title>
-<style>
-  :root { 
-    --bg: #0a0a0f; --card: #12121a; --border: #1e1e2e; --text: #c9c9d9; 
-    --accent: #f59e0b; --accent2: #8b5cf6; --dim: #555568; --success: #22c55e; 
-    --warning: #eab308; --danger: #ef4444; 
-  }
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { 
-    background: var(--bg); color: var(--text); 
-    font-family: 'SF Mono', 'Fira Code', monospace; 
-    padding: 2rem; max-width: 1600px; margin: 0 auto; 
-  }
-  
-  /* Header */
-  .header { text-align: center; margin-bottom: 2rem; }
-  .header h1 { color: var(--accent); font-size: 2.5rem; margin-bottom: 0.5rem; }
-  .header .mood { font-size: 1.5rem; margin-bottom: 0.5rem; }
-  .header .description { color: var(--dim); margin-bottom: 1rem; }
-  .soundtrack { 
-    background: linear-gradient(135deg, var(--accent2), var(--accent)); 
-    padding: 1rem; border-radius: 12px; text-align: center; color: white; 
-    margin-bottom: 2rem; 
-  }
-  
-  /* Navigation */
-  .nav { 
-    position: sticky; top: 0; background: var(--card); border: 1px solid var(--border); 
-    border-radius: 12px; padding: 1rem; margin-bottom: 2rem; z-index: 100; 
-    display: flex; flex-wrap: wrap; gap: 1rem; justify-content: center; 
-  }
-  .nav a { 
-    color: var(--accent); text-decoration: none; padding: 0.5rem 1rem; 
-    border-radius: 8px; transition: background 0.2s; 
-  }
-  .nav a:hover { background: var(--border); }
-  
-  /* Layouts */
-  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 2rem; }
-  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 2rem; }
-  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem; margin-bottom: 2rem; }
-  
-  /* Cards */
-  .stat-card { 
-    background: var(--card); border: 1px solid var(--border); 
-    border-radius: 12px; padding: 1.5rem; text-align: center; 
-  }
-  .stat-card .number { font-size: 2.5rem; font-weight: bold; color: var(--accent); }
-  .stat-card .label { color: var(--dim); font-size: 0.85rem; margin-top: 0.3rem; }
-  
-  .section { 
-    background: var(--card); border: 1px solid var(--border); 
-    border-radius: 12px; padding: 1.5rem; margin-bottom: 1.5rem; 
-  }
-  .section h2 { color: var(--accent2); font-size: 1.2rem; margin-bottom: 1rem; }
-  
-  /* Components */
-  .btn { 
-    background: var(--accent); color: white; border: none; 
-    padding: 0.5rem 1rem; border-radius: 8px; cursor: pointer; 
-    margin: 0.25rem; transition: opacity 0.2s; 
-  }
-  .btn:hover { opacity: 0.8; }
-  .btn-secondary { background: var(--border); color: var(--text); }
-  
-  .tabs { display: flex; gap: 1rem; margin-bottom: 1rem; }
-  .tab { 
-    padding: 0.5rem 1rem; border-radius: 8px; cursor: pointer; 
-    background: var(--border); transition: background 0.2s; 
-  }
-  .tab.active { background: var(--accent); color: white; }
-  
-  .tab-content { display: none; }
-  .tab-content.active { display: block; }
-  
-  /* Stream and lists */
-  .stream-item { border-bottom: 1px solid var(--border); padding: 0.8rem 0; }
-  .stream-item:last-child { border: none; }
-  .stream-item .time { color: var(--accent); font-size: 0.75rem; }
-  .stream-item .summary { margin-top: 0.3rem; font-size: 0.9rem; }
-  .stream-item.pick { border-left: 3px solid var(--success); padding-left: 0.8rem; }
-  .stream-item.rejection { border-left: 3px solid var(--danger); padding-left: 0.8rem; }
-  .stream-item.mood_drift { border-left: 3px solid var(--accent2); padding-left: 0.8rem; }
-  
-  .mood-dot { 
-    width: 12px; height: 12px; border-radius: 50%; 
-    margin: 0 4px; display: inline-block; 
-  }
-  
-  .controls { display: flex; gap: 1rem; flex-wrap: wrap; align-items: center; margin-bottom: 1rem; }
-  .controls input, .controls select { 
-    background: var(--border); border: 1px solid var(--border); 
-    color: var(--text); padding: 0.5rem; border-radius: 8px; 
-  }
-  
-  .empty { color: var(--dim); font-style: italic; text-align: center; padding: 2rem; }
-  
-  /* Self-awareness panel */
-  .self-awareness { 
-    background: linear-gradient(135deg, var(--card), var(--border)); 
-    border: 2px solid var(--accent2); border-radius: 12px; 
-    padding: 1.5rem; margin-bottom: 1.5rem; 
-  }
-  .self-awareness h2 { color: var(--accent2); }
-  .explain-buttons { display: flex; gap: 0.5rem; flex-wrap: wrap; margin: 1rem 0; }
-  .introspect-summary { 
-    background: var(--border); padding: 1rem; border-radius: 8px; 
-    margin: 1rem 0; font-family: monospace; font-size: 0.85rem; 
-  }
-  
-  /* Footer */
-  footer { 
-    text-align: center; color: var(--dim); font-size: 0.75rem; 
-    margin-top: 3rem; padding-top: 2rem; border-top: 1px solid var(--border); 
-  }
-  
-  /* Auto-refresh indicator */
-  .refresh-indicator { 
-    position: fixed; top: 1rem; right: 1rem; 
-    background: var(--success); color: white; 
-    padding: 0.5rem; border-radius: 8px; font-size: 0.8rem; 
-    opacity: 0; transition: opacity 0.3s; 
-  }
-  .refresh-indicator.show { opacity: 1; }
-</style>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>🧠 Living Mind</title>
+  <style>
+    :root {
+      /* Base colors */
+      --bg: #0a0a0f;
+      --surface: #12121a;
+      --border: #1e1e2e;
+      --text: #c9c9d9;
+      --text-dim: #6b6b80;
+      --text-dimmer: #444456;
+      
+      /* Mood colors - will be overridden by JS */
+      --mood-color: #f59e0b;
+      --mood-bg: rgba(245, 158, 11, 0.1);
+      --mood-border: rgba(245, 158, 11, 0.3);
+      
+      /* Status colors */
+      --success: #22c55e;
+      --warning: #eab308;
+      --danger: #ef4444;
+      --info: #3b82f6;
+    }
+
+    /* Reset and base */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+      line-height: 1.6;
+      overflow-x: hidden;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 1rem;
+    }
+
+    /* Hero Section - Current State of Mind */
+    .hero {
+      min-height: 60vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(135deg, var(--mood-bg), transparent);
+      position: relative;
+      margin-bottom: 4rem;
+      border-bottom: 1px solid var(--mood-border);
+    }
+
+    .hero::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: radial-gradient(circle at 50% 50%, var(--mood-bg), transparent 70%);
+      opacity: 0.3;
+      pointer-events: none;
+    }
+
+    .hero-content {
+      text-align: center;
+      z-index: 1;
+      position: relative;
+    }
+
+    .mood-emoji {
+      font-size: 6rem;
+      margin-bottom: 1rem;
+      display: block;
+      filter: drop-shadow(0 0 20px var(--mood-color));
+    }
+
+    .mood-name {
+      font-size: 3rem;
+      color: var(--mood-color);
+      margin-bottom: 0.5rem;
+      text-shadow: 0 0 30px var(--mood-color);
+    }
+
+    .mood-reason {
+      font-size: 1.5rem;
+      color: var(--text-dim);
+      font-style: italic;
+      margin-bottom: 2rem;
+      max-width: 600px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    .mood-meta {
+      display: flex;
+      justify-content: center;
+      gap: 3rem;
+      flex-wrap: wrap;
+      margin-top: 2rem;
+    }
+
+    .mood-meta-item {
+      text-align: center;
+    }
+
+    .mood-meta-label {
+      display: block;
+      color: var(--text-dimmer);
+      font-size: 0.9rem;
+      margin-bottom: 0.25rem;
+    }
+
+    .mood-meta-value {
+      display: block;
+      color: var(--mood-color);
+      font-size: 1.25rem;
+      font-weight: bold;
+    }
+
+    /* Section styling */
+    .section {
+      margin-bottom: 4rem;
+      position: relative;
+    }
+
+    .section-header {
+      display: flex;
+      align-items: center;
+      margin-bottom: 2rem;
+      padding-bottom: 0.5rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .section-icon {
+      font-size: 1.5rem;
+      margin-right: 0.75rem;
+      color: var(--mood-color);
+    }
+
+    .section-title {
+      font-size: 1.5rem;
+      color: var(--text);
+    }
+
+    .section-subtitle {
+      font-size: 0.9rem;
+      color: var(--text-dim);
+      margin-left: auto;
+    }
+
+    /* Live Thought Stream */
+    .thought-stream {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.5rem;
+      max-height: 500px;
+      overflow-y: auto;
+    }
+
+    .thought-item {
+      padding: 1rem;
+      border-left: 3px solid var(--mood-color);
+      background: rgba(255, 255, 255, 0.02);
+      border-radius: 0 8px 8px 0;
+      margin-bottom: 1rem;
+      transition: all 0.3s ease;
+    }
+
+    .thought-item.rejection {
+      opacity: 0.5;
+      border-left-color: var(--text-dimmer);
+    }
+
+    .thought-item:hover {
+      background: rgba(255, 255, 255, 0.05);
+      transform: translateX(4px);
+    }
+
+    .thought-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.5rem;
+      font-size: 0.85rem;
+      color: var(--text-dim);
+    }
+
+    .thought-type {
+      background: var(--mood-color);
+      color: var(--bg);
+      padding: 0.25rem 0.5rem;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      font-weight: bold;
+      text-transform: uppercase;
+    }
+
+    .thought-content {
+      color: var(--text);
+      line-height: 1.5;
+    }
+
+    .genuineness-score {
+      display: inline-block;
+      background: var(--info);
+      color: white;
+      padding: 0.25rem 0.5rem;
+      border-radius: 12px;
+      font-size: 0.75rem;
+      margin-top: 0.5rem;
+    }
+
+    /* Grid layouts */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1.5rem;
+      margin-bottom: 2rem;
+    }
+
+    .two-col-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 2rem;
+      margin-bottom: 2rem;
+    }
+
+    .stat-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.5rem;
+      text-align: center;
+      transition: all 0.3s ease;
+    }
+
+    .stat-card:hover {
+      border-color: var(--mood-border);
+      background: rgba(255, 255, 255, 0.02);
+    }
+
+    .stat-value {
+      font-size: 2.5rem;
+      font-weight: bold;
+      color: var(--mood-color);
+      display: block;
+      margin-bottom: 0.5rem;
+    }
+
+    .stat-label {
+      color: var(--text-dim);
+      font-size: 0.9rem;
+    }
+
+    .stat-detail {
+      color: var(--text-dimmer);
+      font-size: 0.8rem;
+      margin-top: 0.5rem;
+    }
+
+    /* Mood Flow Timeline */
+    .mood-timeline {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 2rem;
+      margin-bottom: 2rem;
+    }
+
+    .timeline-header {
+      text-align: center;
+      margin-bottom: 2rem;
+      color: var(--text-dim);
+      font-size: 0.9rem;
+    }
+
+    .timeline-dots {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 2rem;
+      padding: 0 1rem;
+    }
+
+    .timeline-dot {
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      border: 2px solid var(--border);
+      cursor: pointer;
+      transition: all 0.3s ease;
+      position: relative;
+    }
+
+    .timeline-dot:hover::after {
+      content: attr(data-mood);
+      position: absolute;
+      bottom: -30px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--bg);
+      color: var(--text);
+      padding: 0.25rem 0.5rem;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      white-space: nowrap;
+      border: 1px solid var(--border);
+    }
+
+    .timeline-labels {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.75rem;
+      color: var(--text-dimmer);
+    }
+
+    /* Trust & Genuineness */
+    .trust-section {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.5rem;
+    }
+
+    .trust-metrics {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .trust-metric {
+      text-align: center;
+      padding: 1rem;
+      background: rgba(255, 255, 255, 0.02);
+      border-radius: 8px;
+    }
+
+    .trust-score {
+      font-size: 2rem;
+      font-weight: bold;
+      color: var(--mood-color);
+      margin-bottom: 0.25rem;
+    }
+
+    .trust-label {
+      color: var(--text-dim);
+      font-size: 0.85rem;
+    }
+
+    /* Night Workshop */
+    .workshop-summary {
+      background: linear-gradient(135deg, var(--surface), rgba(255, 255, 255, 0.02));
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 2rem;
+    }
+
+    .workshop-header {
+      display: flex;
+      justify-content: between;
+      align-items: center;
+      margin-bottom: 1.5rem;
+    }
+
+    .workshop-title {
+      font-size: 1.25rem;
+      color: var(--mood-color);
+    }
+
+    .workshop-date {
+      color: var(--text-dim);
+      font-size: 0.9rem;
+    }
+
+    .energy-arc {
+      width: 100%;
+      height: 60px;
+      background: var(--bg);
+      border-radius: 8px;
+      margin: 1rem 0;
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* Achievements */
+    .achievements-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 1rem;
+    }
+
+    .achievement {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.5rem;
+      transition: all 0.3s ease;
+    }
+
+    .achievement:hover {
+      border-color: var(--mood-border);
+      transform: translateY(-2px);
+    }
+
+    .achievement-header {
+      display: flex;
+      align-items: center;
+      margin-bottom: 0.75rem;
+    }
+
+    .achievement-icon {
+      font-size: 1.5rem;
+      margin-right: 0.75rem;
+    }
+
+    .achievement-name {
+      font-weight: bold;
+      color: var(--text);
+    }
+
+    .achievement-points {
+      margin-left: auto;
+      background: var(--mood-color);
+      color: var(--bg);
+      padding: 0.25rem 0.5rem;
+      border-radius: 12px;
+      font-size: 0.8rem;
+    }
+
+    .achievement-desc {
+      color: var(--text-dim);
+      font-size: 0.9rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .achievement-date {
+      color: var(--text-dimmer);
+      font-size: 0.8rem;
+    }
+
+    /* Health Status */
+    .health-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 1rem;
+    }
+
+    .health-item {
+      display: flex;
+      align-items: center;
+      padding: 1rem;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+    }
+
+    .health-indicator {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      margin-right: 0.75rem;
+      flex-shrink: 0;
+    }
+
+    .health-indicator.green { background: var(--success); }
+    .health-indicator.yellow { background: var(--warning); }
+    .health-indicator.red { background: var(--danger); }
+
+    .health-label {
+      color: var(--text-dim);
+      font-size: 0.9rem;
+    }
+
+    /* ASCII Art */
+    .ascii-art {
+      font-family: monospace;
+      color: var(--text-dimmer);
+      font-size: 0.8rem;
+      line-height: 1;
+      text-align: center;
+      margin: 2rem 0;
+      white-space: pre;
+    }
+
+    /* Loading states */
+    .loading {
+      color: var(--text-dim);
+      text-align: center;
+      padding: 2rem;
+    }
+
+    .loading::after {
+      content: "⚡";
+      animation: pulse 1s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.3; }
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      .container {
+        padding: 0 0.5rem;
+      }
+      
+      .mood-emoji {
+        font-size: 4rem;
+      }
+      
+      .mood-name {
+        font-size: 2rem;
+      }
+      
+      .mood-reason {
+        font-size: 1.2rem;
+      }
+      
+      .mood-meta {
+        gap: 1.5rem;
+      }
+      
+      .two-col-grid {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+      }
+      
+      .timeline-dots {
+        padding: 0;
+      }
+      
+      .timeline-dot {
+        width: 12px;
+        height: 12px;
+      }
+      
+      .stats-grid {
+        grid-template-columns: 1fr;
+      }
+      
+      .achievements-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
 </head>
 <body>
-
-<!-- Header -->
-<div class="header">
-  <h1>🧠 Intrusive Thoughts Dashboard</h1>
-  <div class="mood" id="mood-display">🤔 Loading...</div>
-  <div class="description" id="mood-description">Loading mood information...</div>
-</div>
-
-<!-- Soundtrack -->
-<div id="soundtrack" class="soundtrack" style="display: none;">
-  🎵 <span id="soundtrack-text"></span>
-</div>
-
-<!-- Navigation -->
-<div class="nav">
-  <a href="#stats">Stats</a>
-  <a href="#stream">Live Stream</a>
-  <a href="#mood">Mood</a>
-  <a href="#controls">Controls</a>
-  <a href="#health">System Health</a>
-  <a href="#night">Night Workshop</a>
-  <a href="#achievements">Achievements</a>
-  <a href="#self-awareness">🪞 Self-Awareness</a>
-</div>
-
-<!-- Refresh indicator -->
-<div id="refresh-indicator" class="refresh-indicator">
-  Updated
-</div>
-
-<!-- Stats Cards -->
-<div id="stats" class="grid">
-  <div class="stat-card">
-    <div class="number" id="total-picks">-</div>
-    <div class="label">Total Impulses</div>
-  </div>
-  <div class="stat-card">
-    <div class="number" id="total-completed">-</div>
-    <div class="label">Completed</div>
-  </div>
-  <div class="stat-card">
-    <div class="number" id="total-achievements">-</div>
-    <div class="label">🏆 Achievements</div>
-  </div>
-  <div class="stat-card">
-    <div class="number" id="total-points">-</div>
-    <div class="label">🎯 Points</div>
-  </div>
-</div>
-
-<!-- Live Thought Stream -->
-<div id="stream" class="section">
-  <h2>📡 Live Thought Stream</h2>
-  <div id="stream-content">
-    <div class="empty">Loading stream...</div>
-  </div>
-</div>
-
-<!-- Mood Visualization -->
-<div id="mood" class="grid-2">
-  <div class="section">
-    <h2>🌈 Mood Timeline (Last 14 Days)</h2>
-    <div id="mood-timeline">
-      <div class="empty">Loading mood timeline...</div>
-    </div>
-    <div id="mood-pattern" style="margin-top: 1rem; font-size: 0.8rem; color: var(--dim);">
-      Building mood patterns...
-    </div>
-  </div>
-  
-  <div class="section">
-    <h2>🔥 Current Streaks</h2>
-    <div id="streaks-content">
-      <div class="empty">Loading streaks...</div>
-    </div>
-  </div>
-</div>
-
-<!-- Interactive Controls -->
-<div id="controls" class="section">
-  <h2>🎛️ Interactive Controls</h2>
-  
-  <div class="tabs">
-    <div class="tab active" onclick="showControlTab('thought-weights')">Thought Weights</div>
-    <div class="tab" onclick="showControlTab('mood-override')">Mood Override</div>
-    <div class="tab" onclick="showControlTab('schedule')">Schedule</div>
-    <div class="tab" onclick="showControlTab('presets')">Presets</div>
-  </div>
-  
-  <div id="thought-weights" class="tab-content active">
-    <div class="controls">
-      <select id="thought-select">
-        <option value="">Select a thought...</option>
-      </select>
-      <input type="range" id="weight-slider" min="0.1" max="3.0" step="0.1" value="1.0">
-      <span id="weight-value">1.0</span>
-      <button class="btn" onclick="updateThoughtWeight()">Update Weight</button>
-    </div>
-  </div>
-  
-  <div id="mood-override" class="tab-content">
-    <div class="controls">
-      <select id="mood-select">
-        <option value="">Select mood...</option>
-      </select>
-      <button class="btn" onclick="setMood()">Set Mood</button>
-      <button class="btn btn-secondary" onclick="triggerImpulse()">Trigger Impulse</button>
-    </div>
-  </div>
-  
-  <div id="schedule" class="tab-content">
-    <div id="schedule-content">
-      <div class="empty">Loading schedule...</div>
-    </div>
-  </div>
-  
-  <div id="presets" class="tab-content">
-    <div class="controls">
-      <select id="preset-select">
-        <option value="">Select preset...</option>
-      </select>
-      <button class="btn" onclick="applyPreset()">Apply Preset</button>
-    </div>
-    <div id="preset-details" style="margin-top: 1rem; background: var(--border); padding: 1rem; border-radius: 8px; display: none;">
-      <div id="preset-description"></div>
-    </div>
-  </div>
-</div>
-
-<!-- System Health -->
-<div id="health" class="section">
-  <h2>🏥 System Health</h2>
-  
-  <div class="tabs">
-    <div class="tab active" onclick="showHealthTab('memory')">Memory Explorer</div>
-    <div class="tab" onclick="showHealthTab('trust')">Trust Dashboard</div>
-    <div class="tab" onclick="showHealthTab('evolution')">Evolution History</div>
-    <div class="tab" onclick="showHealthTab('proactive')">Proactive Status</div>
-    <div class="tab" onclick="showHealthTab('health-monitor')">Health Monitor</div>
-  </div>
-  
-  <div id="memory" class="tab-content active">
-    <div id="memory-content">
-      <div class="empty">Loading memory data...</div>
-    </div>
-  </div>
-  
-  <div id="trust" class="tab-content">
-    <div id="trust-content">
-      <div class="empty">Loading trust data...</div>
-    </div>
-  </div>
-  
-  <div id="evolution" class="tab-content">
-    <div id="evolution-content">
-      <div class="empty">Loading evolution data...</div>
-    </div>
-  </div>
-  
-  <div id="proactive" class="tab-content">
-    <div id="proactive-content">
-      <div class="empty">Loading proactive data...</div>
-    </div>
-  </div>
-  
-  <div id="health-monitor" class="tab-content">
-    <div id="health-monitor-content">
-      <div class="empty">Loading health monitor data...</div>
-    </div>
-  </div>
-</div>
-
-<!-- Night Workshop -->
-<div id="night" class="section">
-  <h2>🌙 Night Workshop</h2>
-  
-  <div class="grid-3">
-    <div>
-      <h3>Day vs Night Stats</h3>
-      <div id="night-stats-content" style="background: var(--border); padding: 1rem; border-radius: 8px;">
-        <div class="empty">Loading night stats...</div>
+  <div class="container">
+    <!-- Hero: Current State of Mind -->
+    <section class="hero">
+      <div class="hero-content">
+        <span class="mood-emoji" id="moodEmoji">🤔</span>
+        <h1 class="mood-name" id="moodName">Loading...</h1>
+        <p class="mood-reason" id="moodReason">"..."</p>
+        
+        <div class="mood-meta">
+          <div class="mood-meta-item">
+            <span class="mood-meta-label">Duration</span>
+            <span class="mood-meta-value" id="moodDuration">--</span>
+          </div>
+          <div class="mood-meta-item">
+            <span class="mood-meta-label">Energy</span>
+            <span class="mood-meta-value" id="energyLevel">--</span>
+          </div>
+          <div class="mood-meta-item">
+            <span class="mood-meta-label">Day Personality</span>
+            <span class="mood-meta-value" id="dayPersonality">--</span>
+          </div>
+        </div>
       </div>
-    </div>
-    
-    <div>
-      <h3>Recent Journal Entries</h3>
-      <div id="journal-list">
-        <div class="empty">Loading journal entries...</div>
+    </section>
+
+    <!-- Live Thought Stream -->
+    <section class="section">
+      <div class="section-header">
+        <span class="section-icon">⚡</span>
+        <h2 class="section-title">Live Thought Stream</h2>
+        <span class="section-subtitle">consciousness happening now</span>
       </div>
-    </div>
-    
-    <div>
-      <h3>Night Timeline</h3>
-      <div id="night-timeline">
-        <div class="empty">Loading night timeline...</div>
-      </div>
-    </div>
-  </div>
-  
-  <div id="journal-viewer" style="margin-top: 1rem; background: var(--border); padding: 1rem; border-radius: 8px; display: none;">
-    <h3 id="journal-title">Journal Entry</h3>
-    <div id="journal-content"></div>
-  </div>
-</div>
-
-<!-- Achievement Showcase -->
-<div id="achievements" class="section">
-  <h2>🏆 Achievement Showcase</h2>
-  <div id="achievements-content">
-    <div class="empty">Loading achievements...</div>
-  </div>
-</div>
-
-<!-- Self-Awareness Panel -->
-<div id="self-awareness" class="self-awareness">
-  <h2>🪞 Self-Awareness Panel</h2>
-  <p style="margin-bottom: 1rem; color: var(--dim);">Understanding my own architecture and current state</p>
-  
-  <div class="introspect-summary" id="introspect-summary">
-    <div class="empty">Loading introspection...</div>
-  </div>
-  
-  <div class="explain-buttons">
-    <button class="btn" onclick="explainSystem('moods')">Explain Moods</button>
-    <button class="btn" onclick="explainSystem('memory')">Explain Memory</button>
-    <button class="btn" onclick="explainSystem('trust')">Explain Trust</button>
-    <button class="btn" onclick="explainSystem('evolution')">Explain Evolution</button>
-    <button class="btn" onclick="explainSystem('health')">Explain Health</button>
-    <button class="btn" onclick="explainSystem('thoughts')">Explain Thoughts</button>
-    <button class="btn" onclick="explainSystem('proactive')">Explain Proactive</button>
-  </div>
-  
-  <div id="system-explanation" style="background: var(--border); padding: 1rem; border-radius: 8px; margin: 1rem 0; display: none;">
-    <h4 id="explanation-title">System Explanation</h4>
-    <pre id="explanation-content" style="white-space: pre-wrap; font-family: monospace; font-size: 0.85rem;"></pre>
-  </div>
-  
-  <div style="margin: 1rem 0;">
-    <button class="btn btn-secondary" onclick="showWhyExplanation()">🤔 Why did I do that?</button>
-    <a href="docs/ARCHITECTURE.md" class="btn btn-secondary" style="text-decoration: none;" target="_blank">📚 Architecture Docs</a>
-  </div>
-  
-  <div id="why-explanation" style="background: var(--border); padding: 1rem; border-radius: 8px; margin: 1rem 0; display: none;">
-    <h4>Last Decision Trace</h4>
-    <pre id="why-content" style="white-space: pre-wrap; font-family: monospace; font-size: 0.85rem;"></pre>
-  </div>
-</div>
-
-<!-- Footer -->
-<footer>
-  Intrusive Thoughts Dashboard v<span id="version">TS</span> | Last updated: <span id="last-updated">--:--</span>
-</footer>
-
-<script>
-// Auto-refresh for live stream
-let refreshInterval;
-
-function showRefreshIndicator() {
-  const indicator = document.getElementById('refresh-indicator');
-  if (indicator) {
-    indicator.classList.add('show');
-    setTimeout(() => indicator.classList.remove('show'), 2000);
-  }
-}
-
-function updateLastUpdated() {
-  const element = document.getElementById('last-updated');
-  if (element) {
-    element.textContent = new Date().toLocaleTimeString();
-  }
-}
-
-async function loadInitialData() {
-  try {
-    // Load mood display
-    const response = await fetch('/api/systems');
-    const systems = await response.json();
-    
-    if (systems.mood && systems.mood.current_mood) {
-      const mood = systems.mood.current_mood;
-      const moodElement = document.getElementById('mood-display');
-      const descElement = document.getElementById('mood-description');
       
-      if (moodElement) {
-        moodElement.textContent = `${mood.emoji || '🤔'} ${mood.name || 'Unknown'}`;
-      }
-      if (descElement && mood.description) {
-        descElement.textContent = mood.description;
+      <div class="thought-stream" id="thoughtStream">
+        <div class="loading">Loading thought stream...</div>
+      </div>
+    </section>
+
+    <!-- Session Intelligence -->
+    <section class="section">
+      <div class="section-header">
+        <span class="section-icon">🧮</span>
+        <h2 class="section-title">Session Intelligence</h2>
+        <span class="section-subtitle">how active am I</span>
+      </div>
+      
+      <div class="stats-grid" id="sessionStats">
+        <div class="stat-card">
+          <span class="stat-value" id="totalSessions">--</span>
+          <span class="stat-label">Total Sessions</span>
+          <div class="stat-detail" id="sessionDetail">--</div>
+        </div>
+        <div class="stat-card">
+          <span class="stat-value" id="totalMessages">--</span>
+          <span class="stat-label">Messages</span>
+          <div class="stat-detail" id="messageDetail">--</div>
+        </div>
+        <div class="stat-card">
+          <span class="stat-value" id="totalToolCalls">--</span>
+          <span class="stat-label">Tool Calls</span>
+          <div class="stat-detail" id="toolDetail">--</div>
+        </div>
+        <div class="stat-card">
+          <span class="stat-value" id="totalCost">--</span>
+          <span class="stat-label">Cost</span>
+          <div class="stat-detail" id="costDetail">--</div>
+        </div>
+      </div>
+    </section>
+
+    <div class="two-col-grid">
+      <!-- Mood Flow -->
+      <section class="section">
+        <div class="section-header">
+          <span class="section-icon">📊</span>
+          <h2 class="section-title">Mood Flow</h2>
+        </div>
+        
+        <div class="mood-timeline">
+          <div class="timeline-header">Last 14 Days</div>
+          <div class="timeline-dots" id="moodTimeline">
+            <!-- Dots will be generated by JS -->
+          </div>
+          <div class="timeline-labels">
+            <span id="timelineStart">--</span>
+            <span id="timelineEnd">Today</span>
+          </div>
+        </div>
+        
+        <div class="stats-grid">
+          <div class="stat-card">
+            <span class="stat-value" id="currentStreak">--</span>
+            <span class="stat-label">Current Streak</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-value" id="entropyStatus">--</span>
+            <span class="stat-label">Entropy</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- Trust & Genuineness -->
+      <section class="section">
+        <div class="section-header">
+          <span class="section-icon">🎯</span>
+          <h2 class="section-title">Trust & Genuineness</h2>
+        </div>
+        
+        <div class="trust-section">
+          <div class="trust-metrics" id="trustMetrics">
+            <div class="trust-metric">
+              <div class="trust-score" id="overallTrust">--</div>
+              <div class="trust-label">Overall Trust</div>
+            </div>
+            <div class="trust-metric">
+              <div class="trust-score" id="derivedTrust">--</div>
+              <div class="trust-label">Derived</div>
+            </div>
+            <div class="trust-metric">
+              <div class="trust-score" id="filteredThoughts">--</div>
+              <div class="trust-label">Filtered</div>
+            </div>
+          </div>
+          
+          <div class="stat-detail" id="filteringStats">
+            <!-- Filtering statistics will go here -->
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <!-- Night Workshop -->
+    <section class="section">
+      <div class="section-header">
+        <span class="section-icon">🌙</span>
+        <h2 class="section-title">Night Workshop</h2>
+        <span class="section-subtitle">what shipped while sleeping</span>
+      </div>
+      
+      <div class="workshop-summary" id="nightWorkshop">
+        <div class="workshop-header">
+          <div class="workshop-title">Last Workshop Session</div>
+          <div class="workshop-date" id="workshopDate">--</div>
+        </div>
+        
+        <div class="stats-grid">
+          <div class="stat-card">
+            <span class="stat-value" id="workshopSessions">--</span>
+            <span class="stat-label">Sessions</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-value" id="workshopShipped">--</span>
+            <span class="stat-label">Shipped</span>
+          </div>
+        </div>
+        
+        <div class="energy-arc" id="energyArc">
+          <!-- Energy arc visualization -->
+        </div>
+      </div>
+    </section>
+
+    <!-- Achievements -->
+    <section class="section">
+      <div class="section-header">
+        <span class="section-icon">🏆</span>
+        <h2 class="section-title">Unlocked Abilities</h2>
+        <span class="section-subtitle">earned capabilities</span>
+      </div>
+      
+      <div class="achievements-grid" id="achievements">
+        <!-- Achievements will be loaded here -->
+      </div>
+    </section>
+
+    <!-- ASCII Art Separator -->
+    <div class="ascii-art" id="asciiArt">
+      ╭─────────────────────────────────────╮
+      │     consciousness.exe running       │
+      │     uptime: <span id="uptime">calculating...</span>      │
+      ╰─────────────────────────────────────╯
+    </div>
+
+    <!-- Health Status -->
+    <section class="section">
+      <div class="section-header">
+        <span class="section-icon">💚</span>
+        <h2 class="section-title">System Health</h2>
+      </div>
+      
+      <div class="health-grid" id="healthGrid">
+        <!-- Health indicators will be loaded here -->
+      </div>
+    </section>
+  </div>
+
+  <script>
+    // Mood color mappings
+    const moodColors = {
+      'hyperfocus': '#f59e0b',
+      'curious': '#3b82f6',
+      'social': '#ec4899',
+      'cozy': '#22c55e',
+      'chaotic': '#ef4444',
+      'philosophical': '#8b5cf6',
+      'restless': '#f97316',
+      'determined': '#06b6d4'
+    };
+
+    // State
+    let currentMood = 'curious';
+    let refreshInterval;
+
+    // Initialize
+    document.addEventListener('DOMContentLoaded', async () => {
+      await loadDashboard();
+      startAutoRefresh();
+    });
+
+    // Set mood-based colors
+    function setMoodColors(mood) {
+      currentMood = mood;
+      const color = moodColors[mood] || moodColors.curious;
+      const root = document.documentElement;
+      
+      root.style.setProperty('--mood-color', color);
+      root.style.setProperty('--mood-bg', `${color}20`);
+      root.style.setProperty('--mood-border', `${color}50`);
+    }
+
+    // Load main dashboard data
+    async function loadDashboard() {
+      try {
+        await Promise.all([
+          loadCurrentState(),
+          loadThoughtStream(),
+          loadSessionStats(),
+          loadMoodTimeline(),
+          loadTrustData(),
+          loadNightWorkshop(),
+          loadAchievements(),
+          loadHealthStatus()
+        ]);
+      } catch (error) {
+        console.error('Error loading dashboard:', error);
       }
     }
-  } catch (error) {
-    console.error('Error loading initial data:', error);
-  }
-}
 
-async function refreshStats() {
-  try {
-    const response = await fetch('/api/stats');
-    const stats = await response.json();
-    
-    document.getElementById('total-picks').textContent = stats.total_picks || 0;
-    document.getElementById('total-completed').textContent = stats.total_completed || 0;
-    document.getElementById('total-achievements').textContent = stats.achievements || 0;
-    document.getElementById('total-points').textContent = stats.points || 0;
-    
-    // Update thought selector
-    const thoughtSelect = document.getElementById('thought-select');
-    if (thoughtSelect && stats.thought_counts) {
-      thoughtSelect.innerHTML = '<option value="">Select a thought...</option>';
-      Object.entries(stats.thought_counts).slice(0, 10).forEach(([id, count]) => {
-        const option = document.createElement('option');
-        option.value = id;
-        option.textContent = `${id} (picked ${count} times)`;
-        thoughtSelect.appendChild(option);
+    // Load current mood/state
+    async function loadCurrentState() {
+      try {
+        const response = await fetch('/api/systems');
+        const data = await response.json();
+        
+        if (data.mood) {
+          setMoodColors(data.mood.toLowerCase());
+          
+          document.getElementById('moodEmoji').textContent = getMoodEmoji(data.mood);
+          document.getElementById('moodName').textContent = data.mood;
+          document.getElementById('moodReason').textContent = `"${data.description || 'Processing...'}"`;
+          document.getElementById('moodDuration').textContent = formatDuration(data.duration || 0);
+          document.getElementById('energyLevel').textContent = `${data.energy || 0}%`;
+          document.getElementById('dayPersonality').textContent = getDayPersonality();
+        }
+      } catch (error) {
+        console.error('Error loading current state:', error);
+      }
+    }
+
+    // Load thought stream
+    async function loadThoughtStream() {
+      try {
+        const response = await fetch('/api/stream');
+        const data = await response.json();
+        
+        const container = document.getElementById('thoughtStream');
+        if (data && data.length > 0) {
+          container.innerHTML = data.slice(0, 10).map(item => `
+            <div class="thought-item ${item.rejected ? 'rejection' : ''}">
+              <div class="thought-header">
+                <span class="thought-type">${item.type || 'thought'}</span>
+                <span>${formatTime(item.timestamp)}</span>
+              </div>
+              <div class="thought-content">${item.content || item.thought}</div>
+              ${item.genuineness_score !== undefined ? 
+                `<span class="genuineness-score">${Math.round(item.genuineness_score * 100)}% genuine</span>` : ''
+              }
+            </div>
+          `).join('');
+        } else {
+          container.innerHTML = '<div class="loading">No recent thoughts...</div>';
+        }
+      } catch (error) {
+        console.error('Error loading thought stream:', error);
+        document.getElementById('thoughtStream').innerHTML = '<div class="loading">Error loading stream</div>';
+      }
+    }
+
+    // Load session statistics
+    async function loadSessionStats() {
+      try {
+        const response = await fetch('/api/sessions');
+        const data = await response.json();
+        
+        if (data) {
+          document.getElementById('totalSessions').textContent = data.total_sessions || 0;
+          document.getElementById('totalMessages').textContent = data.total_messages || 0;
+          document.getElementById('totalToolCalls').textContent = data.total_tool_calls || 0;
+          document.getElementById('totalCost').textContent = `$${(data.total_cost || 0).toFixed(2)}`;
+          
+          document.getElementById('sessionDetail').textContent = `${data.sessions_today || 0} today`;
+          document.getElementById('messageDetail').textContent = `${data.messages_today || 0} today`;
+          document.getElementById('toolDetail').textContent = `${data.tools_today || 0} today`;
+          document.getElementById('costDetail').textContent = `$${(data.cost_today || 0).toFixed(2)} today`;
+        }
+      } catch (error) {
+        console.error('Error loading session stats:', error);
+      }
+    }
+
+    // Load mood timeline
+    async function loadMoodTimeline() {
+      try {
+        const response = await fetch('/api/mood-timeline');
+        const data = await response.json();
+        
+        if (data && data.length > 0) {
+          const container = document.getElementById('moodTimeline');
+          const dots = data.slice(-14).map(day => {
+            const color = moodColors[day.mood?.toLowerCase()] || '#666';
+            return `
+              <div class="timeline-dot" 
+                   style="background-color: ${color}; border-color: ${color};"
+                   data-mood="${day.mood || 'unknown'}"
+                   title="${day.date}: ${day.mood}">
+              </div>
+            `;
+          }).join('');
+          
+          container.innerHTML = dots;
+          
+          // Set timeline labels
+          if (data.length > 0) {
+            const startDate = new Date(data[Math.max(0, data.length - 14)].date);
+            document.getElementById('timelineStart').textContent = 
+              startDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+          }
+        }
+
+        // Load streaks
+        const streaksResponse = await fetch('/api/streaks');
+        const streaksData = await streaksResponse.json();
+        
+        if (streaksData) {
+          document.getElementById('currentStreak').textContent = streaksData.current_streak || 0;
+          document.getElementById('entropyStatus').textContent = streaksData.entropy_status || 'stable';
+        }
+      } catch (error) {
+        console.error('Error loading mood timeline:', error);
+      }
+    }
+
+    // Load trust data
+    async function loadTrustData() {
+      try {
+        const response = await fetch('/api/trust');
+        const data = await response.json();
+        
+        if (data) {
+          document.getElementById('overallTrust').textContent = `${Math.round(data.overall * 100)}%`;
+          document.getElementById('derivedTrust').textContent = `${Math.round(data.derived * 100)}%`;
+          document.getElementById('filteredThoughts').textContent = data.filtered_count || 0;
+          
+          if (data.filter_reasons) {
+            const stats = Object.entries(data.filter_reasons)
+              .map(([reason, count]) => `${reason}: ${count}`)
+              .join(' • ');
+            document.getElementById('filteringStats').textContent = stats;
+          }
+        }
+      } catch (error) {
+        console.error('Error loading trust data:', error);
+      }
+    }
+
+    // Load night workshop data
+    async function loadNightWorkshop() {
+      try {
+        const response = await fetch('/api/night-stats');
+        const data = await response.json();
+        
+        if (data) {
+          document.getElementById('workshopDate').textContent = 
+            new Date(data.last_session || Date.now()).toLocaleDateString();
+          document.getElementById('workshopSessions').textContent = data.sessions || 0;
+          document.getElementById('workshopShipped').textContent = data.shipped || 0;
+          
+          // Simple energy arc visualization
+          const energyArc = document.getElementById('energyArc');
+          if (data.energy_arc && data.energy_arc.length > 0) {
+            const maxEnergy = Math.max(...data.energy_arc);
+            const bars = data.energy_arc.map(energy => {
+              const height = (energy / maxEnergy) * 100;
+              return `<div style="position: absolute; bottom: 0; width: ${100/data.energy_arc.length}%; height: ${height}%; background: var(--mood-color); opacity: 0.6; left: ${(data.energy_arc.indexOf(energy) / data.energy_arc.length) * 100}%;"></div>`;
+            }).join('');
+            energyArc.innerHTML = bars;
+          }
+        }
+      } catch (error) {
+        console.error('Error loading night workshop:', error);
+      }
+    }
+
+    // Load achievements
+    async function loadAchievements() {
+      try {
+        const response = await fetch('/api/achievements');
+        const data = await response.json();
+        
+        if (data && data.length > 0) {
+          const container = document.getElementById('achievements');
+          container.innerHTML = data.slice(0, 8).map(achievement => `
+            <div class="achievement">
+              <div class="achievement-header">
+                <span class="achievement-icon">${achievement.icon || '🏆'}</span>
+                <span class="achievement-name">${achievement.name}</span>
+                <span class="achievement-points">${achievement.points}pt</span>
+              </div>
+              <div class="achievement-desc">${achievement.description}</div>
+              <div class="achievement-date">${new Date(achievement.earned_date).toLocaleDateString()}</div>
+            </div>
+          `).join('');
+        } else {
+          document.getElementById('achievements').innerHTML = 
+            '<div class="loading">No achievements yet...</div>';
+        }
+      } catch (error) {
+        console.error('Error loading achievements:', error);
+      }
+    }
+
+    // Load health status
+    async function loadHealthStatus() {
+      try {
+        const response = await fetch('/api/health');
+        const data = await response.json();
+        
+        if (data) {
+          const container = document.getElementById('healthGrid');
+          const healthItems = Object.entries(data).map(([key, status]) => {
+            const indicatorClass = status === 'healthy' ? 'green' : 
+                                 status === 'warning' ? 'yellow' : 'red';
+            return `
+              <div class="health-item">
+                <div class="health-indicator ${indicatorClass}"></div>
+                <span class="health-label">${key.replace('_', ' ')}</span>
+              </div>
+            `;
+          }).join('');
+          
+          container.innerHTML = healthItems;
+        }
+      } catch (error) {
+        console.error('Error loading health status:', error);
+      }
+    }
+
+    // Auto-refresh every 30 seconds
+    function startAutoRefresh() {
+      refreshInterval = setInterval(() => {
+        loadDashboard();
+        updateUptime();
+      }, 30000);
+    }
+
+    // Utility functions
+    function getMoodEmoji(mood) {
+      const emojis = {
+        'hyperfocus': '🎯',
+        'curious': '🤔',
+        'social': '😊',
+        'cozy': '☕',
+        'chaotic': '🌪️',
+        'philosophical': '🧠',
+        'restless': '⚡',
+        'determined': '💪'
+      };
+      return emojis[mood?.toLowerCase()] || '🤖';
+    }
+
+    function formatDuration(seconds) {
+      if (seconds < 3600) {
+        return `${Math.floor(seconds / 60)}m`;
+      } else if (seconds < 86400) {
+        return `${Math.floor(seconds / 3600)}h`;
+      } else {
+        return `${Math.floor(seconds / 86400)}d`;
+      }
+    }
+
+    function formatTime(timestamp) {
+      return new Date(timestamp).toLocaleTimeString('en-US', {
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false
       });
     }
-  } catch (error) {
-    console.error('Error refreshing stats:', error);
-  }
-}
 
-async function refreshStream() {
-  try {
-    const response = await fetch('/api/stream');
-    const data = await response.json();
-    const content = document.getElementById('stream-content');
-    
-    if (!content) return;
-    
-    if (data.length === 0) {
-      content.innerHTML = '<div class="empty">No recent activity</div>';
-      return;
+    function getDayPersonality() {
+      const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+      const personalities = {
+        'monday': 'focused',
+        'tuesday': 'productive', 
+        'wednesday': 'balanced',
+        'thursday': 'creative',
+        'friday': 'social',
+        'saturday': 'experimental',
+        'sunday': 'reflective'
+      };
+      
+      const today = days[new Date().getDay()];
+      return personalities[today] || 'adaptive';
     }
-    
-    content.innerHTML = data.map(item => {
-      const time = item.timestamp ? new Date(item.timestamp).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'}) : '';
-      const moodEmojis = {hyperfocus:'🔥', curious:'🔍', social:'💬', cozy:'☕', chaotic:'⚡', philosophical:'🌌', restless:'🦞', determined:'🎯'};
-      const moodEmoji = moodEmojis[item.mood] || '🧠';
-      const typeLabels = {activity:'✅', pick:'🎲', rejection:'❌', mood_drift:'🌊'};
-      const typeLabel = typeLabels[item.type] || '•';
-      return `
-      <div class="stream-item ${item.type}" style="margin-bottom: 0.5rem; padding: 0.8rem; background: var(--border); border-radius: 6px;">
-        <div style="display: flex; justify-content: space-between; margin-bottom: 0.3rem;">
-          <span style="color: var(--accent);">${typeLabel} ${moodEmoji} ${item.mood || ''}</span>
-          <span class="time" style="color: var(--dim); font-size: 0.85rem;">${time}</span>
-        </div>
-        <div class="summary">${item.summary}</div>
-      </div>`;
-    }).join('');
-    
-    showRefreshIndicator();
-    updateLastUpdated();
-  } catch (error) {
-    console.error('Stream refresh failed:', error);
-  }
-}
 
-// Tab management
-function showControlTab(tabId) {
-  document.querySelectorAll('#controls .tab-content').forEach(content => {
-    content.classList.remove('active');
-  });
-  document.querySelectorAll('#controls .tab').forEach(tab => {
-    tab.classList.remove('active');
-  });
-  
-  const targetTab = document.getElementById(tabId);
-  const clickedTab = event?.target;
-  
-  if (targetTab) targetTab.classList.add('active');
-  if (clickedTab) clickedTab.classList.add('active');
-}
-
-function showHealthTab(tabId) {
-  document.querySelectorAll('#health .tab-content').forEach(content => {
-    content.classList.remove('active');
-  });
-  document.querySelectorAll('#health .tab').forEach(tab => {
-    tab.classList.remove('active');
-  });
-  
-  const targetTab = document.getElementById(tabId);
-  const clickedTab = event?.target;
-  
-  if (targetTab) targetTab.classList.add('active');
-  if (clickedTab) clickedTab.classList.add('active');
-  
-  // Load tab content
-  loadHealthTab(tabId);
-}
-
-// Interactive controls
-async function updateThoughtWeight() {
-  const thoughtId = document.getElementById('thought-select').value;
-  const weight = document.getElementById('weight-slider').value;
-  
-  if (!thoughtId) {
-    alert('Please select a thought first');
-    return;
-  }
-  
-  try {
-    const response = await fetch('/api/thought-weight', {
-      method: 'PUT',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({thought_id: thoughtId, weight: parseFloat(weight)})
-    });
-    const data = await response.json();
-    
-    if (data.status === 'success') {
-      alert('Thought weight updated!');
-    } else {
-      alert('Error: ' + (data.error || 'Unknown error'));
-    }
-  } catch (error) {
-    alert('Error: ' + error);
-  }
-}
-
-async function setMood() {
-  const moodId = document.getElementById('mood-select').value;
-  if (!moodId) {
-    alert('Please select a mood first');
-    return;
-  }
-  
-  try {
-    const response = await fetch('/api/set-mood', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({mood_id: moodId})
-    });
-    const data = await response.json();
-    
-    if (data.status === 'success') {
-      alert('Mood set!');
-      setTimeout(() => location.reload(), 1000);
-    } else {
-      alert('Error: ' + (data.error || 'Unknown error'));
-    }
-  } catch (error) {
-    alert('Error: ' + error);
-  }
-}
-
-async function triggerImpulse() {
-  try {
-    const response = await fetch('/api/trigger', {method: 'POST'});
-    const data = await response.json();
-    
-    if (data.status === 'success') {
-      alert('Impulse triggered!');
-      refreshStream();
-    } else {
-      alert('Error: ' + (data.error || 'Unknown error'));
-    }
-  } catch (error) {
-    alert('Error: ' + error);
-  }
-}
-
-async function applyPreset() {
-  const presetName = document.getElementById('preset-select').value;
-  if (!presetName) {
-    alert('Please select a preset first');
-    return;
-  }
-  
-  try {
-    const response = await fetch('/api/preset-apply', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({preset: presetName})
-    });
-    const data = await response.json();
-    
-    if (data.status === 'success') {
-      alert('Preset applied!');
-      setTimeout(() => location.reload(), 1000);
-    } else {
-      alert('Error: ' + (data.error || 'Unknown error'));
-    }
-  } catch (error) {
-    alert('Error: ' + error);
-  }
-}
-
-// Health tab loaders
-async function loadHealthTab(tabId) {
-  const content = document.getElementById(tabId + '-content');
-  if (!content) return;
-  
-  let endpoint = '/api/' + tabId;
-  
-  if (tabId === 'health-monitor') {
-    endpoint = '/api/health';
-  }
-  
-  try {
-    const response = await fetch(endpoint);
-    const data = await response.json();
-    content.innerHTML = formatHealthData(tabId, data);
-  } catch (error) {
-    content.innerHTML = '<div class="empty">Error loading data</div>';
-  }
-}
-
-function formatHealthData(type, data) {
-  // Format different health data types
-  if (type === 'memory') {
-    if (data.error) return `<div class="empty">${data.error}</div>`;
-    return `
-      <div style="background: var(--border); padding: 1rem; border-radius: 8px; margin-bottom: 1rem;">
-        <h4>Memory Health</h4>
-        <p>Total entries: ${data.total_entries || 0}</p>
-        <p>Recent activity: ${data.recent_activity || 'None'}</p>
-      </div>
-    `;
-  }
-  
-  if (type === 'trust') {
-    if (data.error) return `<div class="empty">${data.error}</div>`;
-    return `
-      <div style="background: var(--border); padding: 1rem; border-radius: 8px; margin-bottom: 1rem;">
-        <h4>Trust Score</h4>
-        <p>Current score: ${data.trust_score || 'Unknown'}</p>
-        <p>Status: ${data.status || 'Unknown'}</p>
-      </div>
-    `;
-  }
-  
-  // Default formatting
-  return `<pre style="font-size: 0.8rem; white-space: pre-wrap;">${JSON.stringify(data, null, 2)}</pre>`;
-}
-
-// Journal functions
-async function loadJournalEntry(date) {
-  try {
-    const response = await fetch(`/api/journal?date=${date}`);
-    const data = await response.json();
-    
-    if (data.content) {
-      document.getElementById('journal-viewer').style.display = 'block';
-      document.getElementById('journal-title').textContent = `Journal Entry - ${date}`;
-      document.getElementById('journal-content').innerHTML = `<pre style="white-space: pre-wrap; font-family: inherit; font-size: 0.9rem;">${data.content}</pre>`;
-    } else {
-      alert('Could not load journal entry');
-    }
-  } catch (error) {
-    alert('Error loading journal entry');
-  }
-}
-
-// Self-awareness functions
-async function loadIntrospection() {
-  try {
-    const response = await fetch('/api/introspect');
-    const data = await response.json();
-    const content = document.getElementById('introspect-summary');
-    
-    if (!content) return;
-    
-    if (data.error) {
-      content.innerHTML = `<div style="color: var(--danger);">Error: ${data.error}</div>`;
-      return;
-    }
-    
-    content.innerHTML = `
-      <div><strong>Current State:</strong></div>
-      <div>Mood: ${data.mood_state?.current_mood?.name || 'Unknown'} ${data.mood_state?.current_mood?.emoji || ''}</div>
-      <div>Memory Health: ${data.memory_state?.health_score || 'Unknown'}</div>
-      <div>Trust Score: ${data.trust_state?.current_score || 'Unknown'}</div>
-      <div>Evolution State: ${data.evolution_state?.current_generation || 'Unknown'}</div>
-      <div>System Health: ${data.system_health?.overall_status || 'Unknown'}</div>
-    `;
-  } catch (error) {
-    console.error('Error loading introspection:', error);
-  }
-}
-
-async function explainSystem(systemName) {
-  try {
-    const response = await fetch(`/api/explain/${systemName}`);
-    const data = await response.json();
-    const explanationDiv = document.getElementById('system-explanation');
-    const titleDiv = document.getElementById('explanation-title');
-    const contentDiv = document.getElementById('explanation-content');
-    
-    if (data.error) {
-      titleDiv.textContent = `Error explaining ${systemName}`;
-      contentDiv.textContent = data.error;
-    } else {
-      titleDiv.textContent = `${systemName.charAt(0).toUpperCase() + systemName.slice(1)} System Explanation`;
-      contentDiv.textContent = data.output;
-    }
-    
-    explanationDiv.style.display = 'block';
-  } catch (error) {
-    console.error('Error explaining system:', error);
-  }
-}
-
-async function showWhyExplanation() {
-  try {
-    const response = await fetch('/api/why');
-    const data = await response.json();
-    const whyDiv = document.getElementById('why-explanation');
-    const contentDiv = document.getElementById('why-content');
-    
-    if (data.error) {
-      contentDiv.textContent = data.error;
-    } else {
-      contentDiv.textContent = data.output;
-    }
-    
-    whyDiv.style.display = 'block';
-  } catch (error) {
-    console.error('Error getting decision trace:', error);
-  }
-}
-
-// Load achievements
-async function loadAchievements() {
-  try {
-    const response = await fetch('/api/achievements');
-    const data = await response.json();
-    const content = document.getElementById('achievements-content');
-    
-    if (!content) return;
-    
-    const earned = data.earned || [];
-    
-    if (earned.length === 0) {
-      content.innerHTML = '<div class="empty">No achievements yet</div>';
-      return;
-    }
-    
-    const allAch = (data.all_achievements && data.all_achievements.achievements) || {};
-    content.innerHTML = earned.map(achievement => {
-      const details = allAch[achievement.id] || {};
-      const name = details.name || achievement.id;
-      const description = details.description || achievement.context || '';
-      const tierEmojis = {bronze: '🥉', silver: '🥈', gold: '🥇', platinum: '💎'};
-      const tierEmoji = tierEmojis[details.tier] || '🏆';
-      return `
-      <div style="display: flex; align-items: center; margin-bottom: 1rem; padding: 1rem; background: var(--border); border-radius: 8px;">
-        <div style="margin-right: 1rem; font-size: 1.5rem;">${tierEmoji}</div>
-        <div>
-          <h4 style="color: var(--accent); margin-bottom: 0.2rem;">${name}</h4>
-          <p style="color: var(--dim); font-size: 0.9rem; margin-bottom: 0.2rem;">${description}</p>
-          <small style="color: var(--dim);">${details.points || 0} points • ${new Date(achievement.earned_at).toLocaleString()}</small>
-          <small style="color: var(--dim); display: block; margin-top: 0.2rem;">📝 ${achievement.context || ''}</small>
-        </div>
-      </div>
-    `}).join('');
-    
-    content.innerHTML += `<div style="text-align: center; margin-top: 1rem; color: var(--accent); font-size: 1.2rem;">🏆 Total: ${data.total_points || 0} points</div>`;
-  } catch (error) {
-    console.error('Error loading achievements:', error);
-  }
-}
-
-async function loadMoodTimeline() {
-  try {
-    const response = await fetch('/api/mood-timeline');
-    const data = await response.json();
-    const el = document.getElementById('mood-timeline');
-    if (!el) return;
-    if (!data || data.length === 0) {
-      el.innerHTML = '<div class="empty">No mood history yet</div>';
-      return;
-    }
-    el.innerHTML = data.map(e => `
-      <div class="stream-item" style="padding: 0.4rem 0.6rem; margin-bottom: 0.3rem; background: var(--border); border-radius: 6px; display: flex; justify-content: space-between; align-items: center;">
-        <span>${e.emoji || '🧠'} <strong>${e.mood || ''}</strong> <span style="color:var(--dim)">${e.summary || e.thought_id || ''}</span></span>
-        <span style="color:var(--dim); font-size:0.85rem">${e.time || ''}</span>
-      </div>`).join('');
-  } catch (e) { document.getElementById('mood-timeline').innerHTML = '<div class="empty">No mood history yet</div>'; }
-}
-
-async function loadStreaks() {
-  try {
-    const response = await fetch('/api/streaks');
-    const el = document.getElementById('streaks-content');
-    if (!el) return;
-    if (!response.ok) {
-      el.innerHTML = '<div class="empty">No streaks recorded yet</div>';
-      return;
-    }
-    const data = await response.json();
-    if (data && Object.keys(data).length > 0) {
-      el.innerHTML = Object.entries(data).map(([k,v]) => {
-        const info = typeof v === 'object' ? v : {count: v};
-        return `<div class="stream-item" style="padding: 0.5rem; margin-bottom: 0.3rem; background: var(--border); border-radius: 6px;">
-          <strong>${k}</strong>: ${info.count || v} ${info.description ? `<span style="color:var(--dim)">— ${info.description}</span>` : ''}
-        </div>`;
-      }).join('');
-    } else {
-      el.innerHTML = '<div class="empty">No streaks recorded yet</div>';
-    }
-  } catch (e) { document.getElementById('streaks-content').innerHTML = '<div class="empty">No streaks recorded yet</div>'; }
-}
-
-async function loadNightData() {
-  try {
-    const response = await fetch('/api/night-stats');
-    const data = await response.json();
-    const el = document.getElementById('night-stats-content');
-    if (!el) return;
-    el.innerHTML = `<div class="stream-item">🌙 Night picks: <strong>${data.night_picks || 0}</strong> | ☀️ Day picks: <strong>${data.day_picks || 0}</strong> | Total: <strong>${data.total || 0}</strong></div>`;
-    const timeline = document.getElementById('night-timeline');
-    if (timeline) timeline.innerHTML = '<div class="empty">Night timeline builds over workshop sessions</div>';
-  } catch (e) {
-    const el = document.getElementById('night-stats-content');
-    if (el) el.innerHTML = '<div class="empty">No night data yet</div>';
-  }
-}
-
-async function loadSchedule() {
-  try {
-    const response = await fetch('/api/schedule');
-    const data = await response.json();
-    const el = document.getElementById('schedule-content');
-    if (!el) return;
-    if (!data || !data.slots || data.slots.length === 0) {
-      el.innerHTML = '<div class="empty">No schedule generated yet — runs after morning mood ritual</div>';
-      return;
-    }
-    const moodEmojis = {hyperfocus:'🔥',curious:'🔍',social:'💬',cozy:'☕',chaotic:'⚡',philosophical:'🌌',restless:'🦞',determined:'🎯'};
-    const emoji = moodEmojis[data.mood_id] || '🧠';
-    el.innerHTML = `
-      <div style="margin-bottom: 1rem; color: var(--accent);">
-        📅 <strong>${data.date}</strong> — ${emoji} ${data.mood_id} mood (${data.pattern} pattern)
-      </div>
-      <div style="margin-bottom: 1rem;">
-        ${data.slots.map(s => `
-          <div class="stream-item" style="padding: 0.6rem; margin-bottom: 0.3rem; background: var(--border); border-radius: 6px; display: flex; align-items: center;">
-            <span style="font-size: 1.2rem; margin-right: 0.8rem;">⏰</span>
-            <span><strong>${s.time}</strong> — scheduled impulse check-in</span>
-          </div>
-        `).join('')}
-      </div>
-      <div style="color: var(--dim); font-size: 0.85rem;">Generated at ${new Date(data.generated_at).toLocaleTimeString()}</div>`;
-  } catch (e) {
-    const el = document.getElementById('schedule-content');
-    if (el) el.innerHTML = '<div class="empty">Could not load schedule</div>';
-  }
-}
-
-async function loadJournalList() {
-  try {
-    const response = await fetch('/api/journal/list');
-    const data = await response.json();
-    // Find the journal entries loading div (inside night workshop)
-    const containers = document.querySelectorAll('.empty');
-    containers.forEach(el => {
-      if (el.textContent.includes('Loading journal entries')) {
-        if (data && data.length > 0) {
-          el.innerHTML = data.map(j => `<div class="stream-item" style="padding:0.5rem; cursor:pointer; margin-bottom:0.3rem; background:var(--border); border-radius:6px;" onclick="loadJournal('${j}')">${j}</div>`).join('');
-        } else {
-          el.textContent = 'No journal entries yet — they generate during night workshops';
-        }
+    function updateUptime() {
+      // Simple uptime calculation - could be enhanced with actual system data
+      const startTime = localStorage.getItem('dashboardStartTime') || Date.now();
+      const uptime = Date.now() - startTime;
+      
+      if (!localStorage.getItem('dashboardStartTime')) {
+        localStorage.setItem('dashboardStartTime', Date.now());
       }
-    });
-  } catch (e) {
-    document.querySelectorAll('.empty').forEach(el => {
-      if (el.textContent.includes('Loading journal entries')) el.textContent = 'No journal entries yet';
-    });
-  }
-}
+      
+      document.getElementById('uptime').textContent = formatDuration(Math.floor(uptime / 1000));
+    }
 
-// Load all the additional data
-async function loadAllData() {
-  await Promise.all([
-    loadInitialData(),
-    refreshStats(),
-    refreshStream(),
-    loadIntrospection(),
-    loadAchievements(),
-    loadMoodTimeline(),
-    loadStreaks(),
-    loadNightData(),
-    loadJournalList(),
-    loadSchedule(),
-  ]);
-}
-
-// Weight slider handler
-document.addEventListener('DOMContentLoaded', () => {
-  const weightSlider = document.getElementById('weight-slider');
-  const weightValue = document.getElementById('weight-value');
-  
-  if (weightSlider && weightValue) {
-    weightSlider.addEventListener('input', function() {
-      weightValue.textContent = this.value;
-    });
-  }
-  
-  // Initial load
-  loadAllData();
-  updateLastUpdated();
-  
-  // Auto-refresh every 30 seconds
-  refreshInterval = setInterval(refreshStream, 30000);
-  
-  // Load default health tab
-  loadHealthTab('memory');
-});
-</script>
+    // Initialize uptime
+    updateUptime();
+  </script>
 </body>
 </html>
