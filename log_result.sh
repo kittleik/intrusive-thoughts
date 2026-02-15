@@ -48,7 +48,7 @@ entry = {
     'summary': '''$SUMMARY''',
     'energy': '$ENERGY',
     'vibe': '$VIBE',
-    'shipped': $SHIPPED,
+    'shipped': True if '$SHIPPED' == 'true' else False,
     'skills_used': [s.strip() for s in '$SKILLS_USED'.split(',') if s.strip()]
 }
 
