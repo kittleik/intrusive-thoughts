@@ -102,6 +102,16 @@ Your agent creates these using the OpenClaw cron tool:
 - **Night Workshop** (03:00-07:00) — runs `intrusive.sh night` for each session
 - **Daytime Pop-ins** — created dynamically by morning ritual as one-shot jobs
 
+### Optional: Heartbeat-driven mood drift
+
+For continuous mood evolution, uncomment this line in `~/.openclaw/workspace/HEARTBEAT.md`:
+
+```bash
+# - Run ~/Projects/intrusive-thoughts/check_drift.sh
+```
+
+This enables mood drift checks during OpenClaw heartbeats. When 3+ activities accumulate and 2+ hours pass since last drift, the mood evolves automatically and syncs to your workspace.
+
 ### 4. Dashboard
 
 ```bash
@@ -117,7 +127,7 @@ Or run as a systemd service for persistence.
 ### Core
 - 🎲 **Weighted thought selection** with mood bias and decision tracing
 - 📅 **Dynamic scheduling** — pop-in count and timing varies daily
-- 🌊 **Mood drift** — activity outcomes shift mood mid-day
+- 🌊 **Mood drift** — activity outcomes shift mood mid-day, optionally triggered by heartbeats
 - 🎯 **Decision trace** — full candidate logging with rejection reasons
 - 🚫 **Ban awareness** — checks Moltbook status before social actions
 

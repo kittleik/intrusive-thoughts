@@ -174,6 +174,48 @@ def apply_news_influence(mood_weights: Dict[str, float], moods_config: Dict[str,
     
     return mood_weights
 
+def apply_night_summary_influence(mood_weights: Dict[str, float], script_dir: Path) -> List[str]:
+    """Apply night summary influence to mood weights and return reason factors"""
+    night_summary_file = script_dir / "night_summary.json"
+    night_factors = []
+    
+    try:
+        with open(night_summary_file, "r") as f:
+            night_summary = json.load(f)
+        
+        sessions = night_summary.get("sessions", 0)
+        productive = night_summary.get("productive", False)
+        energy_avg = night_summary.get("energy_avg", "none")
+        
+        if sessions > 0:
+            print(f"  🌙 Night summary influence: {sessions} sessions, {energy_avg} energy, productive={productive}", file=sys.stderr)
+            
+            if productive and sessions >= 3 and energy_avg in ["high", "medium"]:
+                # Productive night: bias toward momentum moods
+                if "determined" in mood_weights:
+                    mood_weights["determined"] *= 1.3
+                    print(f"    ↑ Boosting determined (productive night)", file=sys.stderr)
+                if "hyperfocus" in mood_weights:
+                    mood_weights["hyperfocus"] *= 1.2
+                    print(f"    ↑ Boosting hyperfocus (productive night)", file=sys.stderr)
+                night_factors.append("productive night momentum")
+                
+            elif energy_avg == "low" or (sessions < 3 and energy_avg != "high"):
+                # Rough night: bias toward recovery moods
+                if "cozy" in mood_weights:
+                    mood_weights["cozy"] *= 1.3
+                    print(f"    ↑ Boosting cozy (recovery from rough night)", file=sys.stderr)
+                if "curious" in mood_weights:
+                    mood_weights["curious"] *= 1.2
+                    print(f"    ↑ Boosting curious (recovery from rough night)", file=sys.stderr)
+                night_factors.append("recovering from rough night")
+        
+    except (FileNotFoundError, json.JSONDecodeError):
+        # No night summary available, no influence
+        pass
+    
+    return night_factors
+
 def select_weighted_mood(mood_weights: Dict[str, float]) -> str:
     """Select a mood using weighted random selection"""
     moods = list(mood_weights.keys())
@@ -230,6 +272,7 @@ def select_mood(weather: str = "", news_headlines: List[str] = None, location: s
     mood_weights = apply_day_of_week_influence(mood_weights, moods_config, day_of_week)
     mood_weights = apply_weather_influence(mood_weights, moods_config, weather)
     mood_weights = apply_news_influence(mood_weights, moods_config, news_headlines)
+    night_factors = apply_night_summary_influence(mood_weights, script_dir)
     
     # Select mood
     selected_mood_id = select_weighted_mood(mood_weights)
@@ -248,6 +291,10 @@ def select_mood(weather: str = "", news_headlines: List[str] = None, location: s
         location=location,
         script_dir=script_dir
     )
+    
+    # Add night summary context if available
+    if night_factors:
+        mood_reason = f"{mood_reason} (boosted by {', '.join(night_factors)})"
     
     # Add spiral warning if needed
     if spiral_mood and consecutive_days >= 2 and spiral_mood == selected_mood_id:
