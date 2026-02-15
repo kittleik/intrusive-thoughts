@@ -31,3 +31,11 @@ __pycache__/
 .DS_Store
 Thumbs.db
 dashboard/node_modules/
+
+# Runtime data
+memory_store/
+wal/
+buffer/
+log/
+night_summary.json
+mood_patterns.md
