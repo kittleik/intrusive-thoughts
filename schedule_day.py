@@ -11,18 +11,19 @@ MOOD_FILE = BASE / "today_mood.json"
 SCHEDULE_FILE = BASE / "today_schedule.json"
 
 # Mood -> how many pop-ins and time distribution
+# DEV MODE: high frequency for data collection (dial down later)
 MOOD_PATTERNS = {
-    "hyperfocus":    {"count": (2, 4), "cluster": "spread",   "earliest": 10, "latest": 22, "prefer_long_gaps": True},
-    "curious":       {"count": (3, 6), "cluster": "spread",   "earliest": 9,  "latest": 23, "prefer_long_gaps": False},
-    "social":        {"count": (4, 7), "cluster": "afternoon", "earliest": 10, "latest": 22, "prefer_long_gaps": False},
-    "cozy":          {"count": (2, 4), "cluster": "evening",  "earliest": 11, "latest": 21, "prefer_long_gaps": True},
-    "chaotic":       {"count": (3, 8), "cluster": "random",   "earliest": 8,  "latest": 23, "prefer_long_gaps": False},
-    "philosophical": {"count": (2, 4), "cluster": "evening",  "earliest": 12, "latest": 23, "prefer_long_gaps": True},
-    "restless":      {"count": (4, 7), "cluster": "spread",   "earliest": 8,  "latest": 23, "prefer_long_gaps": False},
-    "determined":    {"count": (2, 3), "cluster": "morning",  "earliest": 9,  "latest": 18, "prefer_long_gaps": True},
+    "hyperfocus":    {"count": (6, 10), "cluster": "spread",    "earliest": 9,  "latest": 23, "prefer_long_gaps": False},
+    "curious":       {"count": (8, 12), "cluster": "spread",    "earliest": 9,  "latest": 23, "prefer_long_gaps": False},
+    "social":        {"count": (8, 12), "cluster": "afternoon", "earliest": 9,  "latest": 23, "prefer_long_gaps": False},
+    "cozy":          {"count": (6, 10), "cluster": "evening",   "earliest": 10, "latest": 22, "prefer_long_gaps": False},
+    "chaotic":       {"count": (8, 14), "cluster": "random",    "earliest": 8,  "latest": 23, "prefer_long_gaps": False},
+    "philosophical": {"count": (6, 10), "cluster": "evening",   "earliest": 10, "latest": 23, "prefer_long_gaps": False},
+    "restless":      {"count": (8, 12), "cluster": "spread",    "earliest": 8,  "latest": 23, "prefer_long_gaps": False},
+    "determined":    {"count": (6, 10), "cluster": "spread",    "earliest": 9,  "latest": 22, "prefer_long_gaps": False},
 }
 
-DEFAULT_PATTERN = {"count": (3, 5), "cluster": "spread", "earliest": 10, "latest": 22, "prefer_long_gaps": False}
+DEFAULT_PATTERN = {"count": (8, 12), "cluster": "spread", "earliest": 9, "latest": 23, "prefer_long_gaps": False}
 
 
 def generate_times(pattern):
@@ -70,11 +71,11 @@ def generate_times(pattern):
         minute = random.randint(0, 59)
         slots.append({"hour": hour, "minute": minute, "time": f"{hour:02d}:{minute:02d}"})
     
-    # Ensure minimum 45-min gap between pop-ins
+    # Ensure minimum gap between pop-ins (reduced for dev data collection)
     if pattern.get("prefer_long_gaps"):
-        min_gap = 90
+        min_gap = 60
     else:
-        min_gap = 45
+        min_gap = 30
     
     filtered = [slots[0]] if slots else []
     for s in slots[1:]:
