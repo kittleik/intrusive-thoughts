@@ -32,7 +32,7 @@ TIMESTAMP=$(date -Iseconds)
 
 python3 << PYEOF
 import json, sys
-from datetime import datetime
+from datetime import datetime, timedelta
 
 # Log to history
 try:
@@ -51,6 +51,25 @@ entry = {
     'shipped': $SHIPPED,
     'skills_used': [s.strip() for s in '$SKILLS_USED'.split(',') if s.strip()]
 }
+
+# Dedup: skip if last entry has same thought_id AND similar summary within 5 minutes
+is_duplicate = False
+if history:
+    last = history[-1]
+    try:
+        last_ts = datetime.fromisoformat(last['timestamp'].replace('Z', '+00:00'))
+        cur_ts = datetime.fromisoformat('$TIMESTAMP'.replace('Z', '+00:00'))
+        time_diff = abs((cur_ts - last_ts).total_seconds())
+    except:
+        time_diff = 9999
+    
+    if time_diff < 300 and last.get('thought_id') == entry['thought_id']:
+        is_duplicate = True
+        print(f"DEDUP: Skipping duplicate log for {entry['thought_id']} (logged {int(time_diff)}s ago)")
+
+if is_duplicate:
+    sys.exit(0)
+
 history.append(entry)
 history = history[-500:]
 
