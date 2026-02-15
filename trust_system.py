@@ -347,6 +347,116 @@ class TrustSystem:
     def get_history(self, limit: int = 50) -> List[Dict[str, Any]]:
         """Get recent action history"""
         return self.data["history"][-limit:]
+    
+    def derive_trust_from_sessions(self) -> Dict[str, Any]:
+        """Derive trust scores from actual OpenClaw session logs and cron job results"""
+        import glob
+        import json
+        from pathlib import Path
+        
+        # Mapping of tool names to trust categories
+        tool_to_category = {
+            'read': 'file_operations',
+            'write': 'file_operations', 
+            'edit': 'file_operations',
+            'exec': 'code_execution',
+            'process': 'code_execution',
+            'web_search': 'web_operations',
+            'web_fetch': 'web_operations',
+            'browser': 'web_operations',
+            'message': 'messaging',
+            'nodes': 'system_changes',
+            'canvas': 'web_operations',
+            'image': 'external_api',
+            'tts': 'external_api'
+        }
+        
+        # Initialize counters for derived trust
+        derived_stats = {}
+        for category in self.data["action_categories"].keys():
+            derived_stats[category] = {"successes": 0, "failures": 0, "trust": 0.5}
+        
+        # Read session logs (last 5 files by modification time)
+        sessions_dir = Path.home() / ".openclaw/agents/main/sessions"
+        if sessions_dir.exists():
+            session_files = list(sessions_dir.glob("*.jsonl"))
+            # Filter out lock files and deleted files
+            session_files = [f for f in session_files if not f.name.endswith('.lock') and 'deleted' not in f.name]
+            # Sort by modification time and take last 5
+            session_files.sort(key=lambda x: x.stat().st_mtime, reverse=True)
+            session_files = session_files[:5]
+            
+            for session_file in session_files:
+                try:
+                    with open(session_file, 'r') as f:
+                        for line in f:
+                            try:
+                                entry = json.loads(line.strip())
+                                if entry.get("type") == "message" and entry.get("message", {}).get("role") == "toolResult":
+                                    details = entry.get("details", {})
+                                    tool_name = details.get("tool", "")
+                                    status = details.get("status", "")
+                                    
+                                    category = tool_to_category.get(tool_name)
+                                    if category:
+                                        if status == "error":
+                                            derived_stats[category]["failures"] += 1
+                                        else:
+                                            # Assume success if no explicit error status
+                                            derived_stats[category]["successes"] += 1
+                            except json.JSONDecodeError:
+                                continue
+                except (FileNotFoundError, PermissionError):
+                    continue
+        
+        # Read cron job results
+        cron_jobs_file = Path.home() / ".openclaw/cron/jobs.json"
+        if cron_jobs_file.exists():
+            try:
+                with open(cron_jobs_file, 'r') as f:
+                    cron_data = json.load(f)
+                    for job in cron_data.get("jobs", []):
+                        state = job.get("state", {})
+                        last_status = state.get("lastStatus", "")
+                        consecutive_errors = state.get("consecutiveErrors", 0)
+                        
+                        # Map cron jobs to code_execution category
+                        if last_status == "ok":
+                            derived_stats["code_execution"]["successes"] += 1
+                        elif last_status == "error":
+                            derived_stats["code_execution"]["failures"] += 1
+                        
+                        # Account for consecutive errors (more weight for persistent failures)
+                        if consecutive_errors > 0:
+                            derived_stats["code_execution"]["failures"] += min(consecutive_errors, 5)
+            except (FileNotFoundError, PermissionError, json.JSONDecodeError):
+                pass
+        
+        # Calculate trust scores for each category
+        for category, stats in derived_stats.items():
+            total_actions = stats["successes"] + stats["failures"]
+            if total_actions > 0:
+                stats["trust"] = stats["successes"] / total_actions
+            else:
+                stats["trust"] = 0.5  # Default when no data
+        
+        return derived_stats
+
+
+def get_dashboard_data() -> Dict[str, Any]:
+    """Get trust data for dashboard API endpoint"""
+    trust = TrustSystem()
+    manual_stats = trust.get_stats()
+    derived_stats = trust.derive_trust_from_sessions()
+    
+    return {
+        "manual_trust": manual_stats,
+        "derived_trust": derived_stats,
+        "combined_view": {
+            "global_trust": manual_stats["global_trust"],
+            "categories": {}
+        }
+    }
 
 
 # CLI convenience functions

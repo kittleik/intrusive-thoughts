@@ -47,6 +47,9 @@ usage() {
     echo "  reset [--confirm]"
     echo "      Reset all trust data to defaults"
     echo
+    echo "  derive"
+    echo "      Derive trust scores from OpenClaw session logs and cron jobs"
+    echo
     echo "Examples:"
     echo "  $0 check \"send tweet about project update\" --category messaging --risk high"
     echo "  $0 log-success \"wrote config file\" --category file_operations"
@@ -70,7 +73,7 @@ CONFIRM=""
 
 while [[ $# -gt 0 ]]; do
     case $1 in
-        check|log-success|log-failure|log-escalation|stats|history|adjust|reset)
+        check|log-success|log-failure|log-escalation|stats|history|adjust|reset|derive)
             COMMAND="$1"
             shift
             ;;
@@ -111,7 +114,7 @@ while [[ $# -gt 0 ]]; do
             exit 0
             ;;
         *)
-            if [[ -z "$DESCRIPTION" && "$COMMAND" != "stats" && "$COMMAND" != "history" && "$COMMAND" != "reset" ]]; then
+            if [[ -z "$DESCRIPTION" && "$COMMAND" != "stats" && "$COMMAND" != "history" && "$COMMAND" != "reset" && "$COMMAND" != "derive" ]]; then
                 DESCRIPTION="$1"
             else
                 echo -e "${RED}Unknown option: $1${NC}"
@@ -313,6 +316,35 @@ import sys
 sys.path.append('$SCRIPT_DIR')
 from trust_system import show_stats
 show_stats()
+"
+        ;;
+        
+    "derive")
+        echo -e "${BLUE}📊 Deriving trust scores from OpenClaw session logs...${NC}"
+        python3 -c "
+import sys
+sys.path.append('$SCRIPT_DIR')
+from trust_system import TrustSystem
+
+trust = TrustSystem()
+derived_stats = trust.derive_trust_from_sessions()
+
+print('Derived Trust Scores from Real OpenClaw Data:')
+print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
+
+for category, stats in derived_stats.items():
+    total = stats['successes'] + stats['failures']
+    trust_score = stats['trust']
+    
+    print(f'{category.replace(\"_\", \" \").title():18}: {trust_score:.2f} ({stats[\"successes\"]}✅ {stats[\"failures\"]}❌, total: {total})')
+
+print()
+print('This data comes from:')
+print('• Last 5 OpenClaw session files (tool call success/failure rates)')
+print('• Cron job execution results (lastStatus and consecutiveErrors)')
+print()
+print('Trust formula: successes / (successes + failures)')
+print('Default: 0.5 when no data available')
 "
         ;;
         
