@@ -17,6 +17,7 @@ function countThoughts(data: any): number {
 }
 import { getDataDir } from '../services/config.js';
 import { loadHistory, loadPicks, loadRejections, loadDecisions, loadStreamData } from '../services/history.js';
+import { hasSessionLogs, getSessionStats } from '../services/sessions.js';
 import { loadTodayMood, loadMoodHistory } from '../services/mood.js';
 import { loadThoughts } from '../services/thoughts.js';
 import { getMemorySystemDashboardData } from '../services/memory.js';
@@ -59,6 +60,21 @@ router.get('/stats', (_req, res) => {
     res.json(stats);
   } catch (error) {
     console.error('Error in /api/stats:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// GET /api/sessions
+router.get('/sessions', (_req, res) => {
+  try {
+    if (!hasSessionLogs()) {
+      res.json({ available: false, message: 'No OpenClaw session logs found' });
+      return;
+    }
+    const stats = getSessionStats();
+    res.json({ available: true, ...stats });
+  } catch (error) {
+    console.error('Error in /api/sessions:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -366,10 +382,6 @@ router.get('/roi', async (_req, res) => {
     res.json(roiData);
   } catch (error) {
     console.error('Error in /api/roi:', error);
-<<<<<<< Updated upstream
-    // Return empty data structure if ROI tracking fails
-=======
->>>>>>> Stashed changes
     res.json({
       generated_at: new Date().toISOString(),
       total_history_entries: 0,

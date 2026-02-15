@@ -1,9 +1,24 @@
 import fs from 'fs';
 import path from 'path';
 import { getFilePath, getDataDir } from './config.js';
+import { hasSessionLogs, loadSessionHistory, loadSessionStream } from './sessions.js';
 import type { HistoryEntry, PickEntry, RejectionEntry, StreamItem } from '../types.js';
 
+/**
+ * Load history from OpenClaw session logs, falling back to history.json
+ */
 export function loadHistory(): HistoryEntry[] {
+  // Try session logs first
+  if (hasSessionLogs()) {
+    try {
+      const entries = loadSessionHistory();
+      if (entries.length > 0) return entries;
+    } catch (error) {
+      console.error('Error loading session history, falling back to history.json:', error);
+    }
+  }
+
+  // Fallback to history.json
   try {
     const historyPath = getFilePath('history.json');
     const data = fs.readFileSync(historyPath, 'utf8');
@@ -88,17 +103,31 @@ export function loadDecisions(): any[] {
 export function loadStreamData(limit = 50): StreamItem[] {
   const streamItems: StreamItem[] = [];
 
-  // Add history entries (completed activities)
-  const history = loadHistory();
-  for (const entry of history.slice(-limit)) {
-    streamItems.push({
-      type: 'activity',
-      timestamp: entry.timestamp || '',
-      thought_id: entry.thought_id || 'unknown',
-      mood: entry.mood || 'unknown',
-      summary: entry.summary || `Completed ${entry.thought_id}`,
-      details: entry
-    });
+  // Try session logs first for richer stream data
+  if (hasSessionLogs()) {
+    try {
+      const sessionStream = loadSessionStream(limit);
+      if (sessionStream.length > 0) {
+        streamItems.push(...sessionStream);
+      }
+    } catch (error) {
+      console.error('Error loading session stream:', error);
+    }
+  }
+
+  // Add history entries if no session data or as supplement
+  if (streamItems.length === 0) {
+    const history = loadHistory();
+    for (const entry of history.slice(-limit)) {
+      streamItems.push({
+        type: 'activity',
+        timestamp: entry.timestamp || '',
+        thought_id: entry.thought_id || 'unknown',
+        mood: entry.mood || 'unknown',
+        summary: entry.summary || `Completed ${entry.thought_id}`,
+        details: entry
+      });
+    }
   }
 
   // Add picks

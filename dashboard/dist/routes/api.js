@@ -24,6 +24,7 @@ function countThoughts(data) {
 }
 const config_js_1 = require("../services/config.js");
 const history_js_1 = require("../services/history.js");
+const sessions_js_1 = require("../services/sessions.js");
 const mood_js_1 = require("../services/mood.js");
 const thoughts_js_1 = require("../services/thoughts.js");
 const memory_js_1 = require("../services/memory.js");
@@ -61,6 +62,21 @@ router.get('/stats', (_req, res) => {
     }
     catch (error) {
         console.error('Error in /api/stats:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+// GET /api/sessions
+router.get('/sessions', (_req, res) => {
+    try {
+        if (!(0, sessions_js_1.hasSessionLogs)()) {
+            res.json({ available: false, message: 'No OpenClaw session logs found' });
+            return;
+        }
+        const stats = (0, sessions_js_1.getSessionStats)();
+        res.json({ available: true, ...stats });
+    }
+    catch (error) {
+        console.error('Error in /api/sessions:', error);
         res.status(500).json({ error: 'Internal server error' });
     }
 });
@@ -347,6 +363,30 @@ router.get('/why', async (_req, res) => {
     catch (error) {
         console.error('Error in /api/why:', error);
         res.status(500).json({ error: 'Internal server error' });
+    }
+});
+// GET /api/roi
+router.get('/roi', async (_req, res) => {
+    try {
+        // Run ROI tracker to generate fresh data
+        await execAsync('./roi_tracker.py --json', {
+            cwd: (0, config_js_1.getDataDir)(),
+            timeout: 10000
+        });
+        // Load the generated ROI data
+        const roiPath = path_1.default.join((0, config_js_1.getDataDir)(), 'log', 'roi.json');
+        const roiData = JSON.parse(fs_1.default.readFileSync(roiPath, 'utf8'));
+        res.json(roiData);
+    }
+    catch (error) {
+        console.error('Error in /api/roi:', error);
+        res.json({
+            generated_at: new Date().toISOString(),
+            total_history_entries: 0,
+            thoughts_analyzed: 0,
+            roi_data: {},
+            error: 'ROI data not available'
+        });
     }
 });
 // POST /api/set-mood

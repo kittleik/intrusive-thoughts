@@ -25,7 +25,7 @@ export function loadMemoryData(): MemoryData {
         };
         totalEntries += 1;
       } catch (error) {
-        memoryData.long_term_memory = { status: 'error', error: error.toString() };
+        memoryData.long_term_memory = { status: 'error', error: (error as Error).toString() };
       }
     } else {
       memoryData.long_term_memory = { status: 'missing' };
@@ -43,7 +43,7 @@ export function loadMemoryData(): MemoryData {
         };
         totalEntries += dailyFiles.length;
       } catch (error) {
-        memoryData.daily_memories = { status: 'error', error: error.toString() };
+        memoryData.daily_memories = { status: 'error', error: (error as Error).toString() };
       }
     } else {
       memoryData.daily_memories = { status: 'missing' };
@@ -61,7 +61,7 @@ export function loadMemoryData(): MemoryData {
         };
         totalEntries += moodEntries;
       } catch (error) {
-        memoryData.mood_patterns = { status: 'error', error: error.toString() };
+        memoryData.mood_patterns = { status: 'error', error: (error as Error).toString() };
       }
     } else {
       memoryData.mood_patterns = { status: 'missing' };

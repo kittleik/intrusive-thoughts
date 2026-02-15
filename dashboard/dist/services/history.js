@@ -11,7 +11,23 @@ exports.loadStreamData = loadStreamData;
 const fs_1 = __importDefault(require("fs"));
 const path_1 = __importDefault(require("path"));
 const config_js_1 = require("./config.js");
+const sessions_js_1 = require("./sessions.js");
+/**
+ * Load history from OpenClaw session logs, falling back to history.json
+ */
 function loadHistory() {
+    // Try session logs first
+    if ((0, sessions_js_1.hasSessionLogs)()) {
+        try {
+            const entries = (0, sessions_js_1.loadSessionHistory)();
+            if (entries.length > 0)
+                return entries;
+        }
+        catch (error) {
+            console.error('Error loading session history, falling back to history.json:', error);
+        }
+    }
+    // Fallback to history.json
     try {
         const historyPath = (0, config_js_1.getFilePath)('history.json');
         const data = fs_1.default.readFileSync(historyPath, 'utf8');
@@ -89,17 +105,31 @@ function loadDecisions() {
 }
 function loadStreamData(limit = 50) {
     const streamItems = [];
-    // Add history entries (completed activities)
-    const history = loadHistory();
-    for (const entry of history.slice(-limit)) {
-        streamItems.push({
-            type: 'activity',
-            timestamp: entry.timestamp || '',
-            thought_id: entry.thought_id || 'unknown',
-            mood: entry.mood || 'unknown',
-            summary: entry.summary || `Completed ${entry.thought_id}`,
-            details: entry
-        });
+    // Try session logs first for richer stream data
+    if ((0, sessions_js_1.hasSessionLogs)()) {
+        try {
+            const sessionStream = (0, sessions_js_1.loadSessionStream)(limit);
+            if (sessionStream.length > 0) {
+                streamItems.push(...sessionStream);
+            }
+        }
+        catch (error) {
+            console.error('Error loading session stream:', error);
+        }
+    }
+    // Add history entries if no session data or as supplement
+    if (streamItems.length === 0) {
+        const history = loadHistory();
+        for (const entry of history.slice(-limit)) {
+            streamItems.push({
+                type: 'activity',
+                timestamp: entry.timestamp || '',
+                thought_id: entry.thought_id || 'unknown',
+                mood: entry.mood || 'unknown',
+                summary: entry.summary || `Completed ${entry.thought_id}`,
+                details: entry
+            });
+        }
     }
     // Add picks
     const picks = loadPicks();

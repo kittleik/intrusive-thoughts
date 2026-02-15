@@ -7,36 +7,74 @@ exports.loadMemoryData = loadMemoryData;
 exports.getMemorySystemDashboardData = getMemorySystemDashboardData;
 const fs_1 = __importDefault(require("fs"));
 const path_1 = __importDefault(require("path"));
+const os_1 = __importDefault(require("os"));
 const config_js_1 = require("./config.js");
 function loadMemoryData() {
     try {
-        const memoryStoreDir = path_1.default.join((0, config_js_1.getDataDir)(), 'memory_store');
-        const memoryFiles = ['episodic.json', 'semantic.json', 'procedural.json', 'working.json'];
+        // Check OpenClaw's native memory system instead of old memory_store
+        const openclawMemoryDir = path_1.default.join(os_1.default.homedir(), '.openclaw', 'workspace', 'memory');
+        const memoryMdPath = path_1.default.join(os_1.default.homedir(), '.openclaw', 'workspace', 'MEMORY.md');
+        const moodPatternsPath = path_1.default.join((0, config_js_1.getDataDir)(), 'mood_patterns.md');
         const memoryData = {};
         let totalEntries = 0;
-        for (const filename of memoryFiles) {
-            const filePath = path_1.default.join(memoryStoreDir, filename);
+        // Check OpenClaw MEMORY.md
+        if (fs_1.default.existsSync(memoryMdPath)) {
             try {
-                if (fs_1.default.existsSync(filePath)) {
-                    const data = JSON.parse(fs_1.default.readFileSync(filePath, 'utf8'));
-                    const memoryType = filename.replace('.json', '');
-                    memoryData[memoryType] = data;
-                    // Count entries for health score
-                    if (Array.isArray(data)) {
-                        totalEntries += data.length;
-                    }
-                    else if (typeof data === 'object' && data !== null) {
-                        totalEntries += Object.keys(data).length;
-                    }
-                }
+                const content = fs_1.default.readFileSync(memoryMdPath, 'utf8');
+                memoryData.long_term_memory = {
+                    size: content.length,
+                    last_updated: fs_1.default.statSync(memoryMdPath).mtime,
+                    status: 'available'
+                };
+                totalEntries += 1;
             }
             catch (error) {
-                console.error(`Error loading ${filename}:`, error);
-                memoryData[filename.replace('.json', '')] = null;
+                memoryData.long_term_memory = { status: 'error', error: error.toString() };
             }
         }
+        else {
+            memoryData.long_term_memory = { status: 'missing' };
+        }
+        // Check daily memory files
+        if (fs_1.default.existsSync(openclawMemoryDir)) {
+            try {
+                const files = fs_1.default.readdirSync(openclawMemoryDir);
+                const dailyFiles = files.filter(f => f.match(/^\d{4}-\d{2}-\d{2}\.md$/));
+                memoryData.daily_memories = {
+                    count: dailyFiles.length,
+                    files: dailyFiles.sort().reverse().slice(0, 10), // Most recent 10
+                    status: 'available'
+                };
+                totalEntries += dailyFiles.length;
+            }
+            catch (error) {
+                memoryData.daily_memories = { status: 'error', error: error.toString() };
+            }
+        }
+        else {
+            memoryData.daily_memories = { status: 'missing' };
+        }
+        // Check mood patterns markdown
+        if (fs_1.default.existsSync(moodPatternsPath)) {
+            try {
+                const content = fs_1.default.readFileSync(moodPatternsPath, 'utf8');
+                const moodEntries = (content.match(/^## \d{4}-\d{2}-\d{2}/gm) || []).length;
+                memoryData.mood_patterns = {
+                    entries: moodEntries,
+                    last_updated: fs_1.default.statSync(moodPatternsPath).mtime,
+                    status: 'available'
+                };
+                totalEntries += moodEntries;
+            }
+            catch (error) {
+                memoryData.mood_patterns = { status: 'error', error: error.toString() };
+            }
+        }
+        else {
+            memoryData.mood_patterns = { status: 'missing' };
+        }
         memoryData.total_entries = totalEntries;
-        memoryData.recent_activity = getRecentMemoryActivity(memoryStoreDir);
+        memoryData.recent_activity = getRecentMemoryActivity();
         return memoryData;
     }
     catch (error) {
@@ -44,19 +82,31 @@ function loadMemoryData() {
         return { error: 'memory system unavailable' };
     }
 }
-function getRecentMemoryActivity(memoryStoreDir) {
+function getRecentMemoryActivity() {
     try {
-        // Check file modification times to determine recent activity
-        const files = fs_1.default.readdirSync(memoryStoreDir);
-        let mostRecentFile = '';
+        const openclawMemoryDir = path_1.default.join(os_1.default.homedir(), '.openclaw', 'workspace', 'memory');
+        const memoryMdPath = path_1.default.join(os_1.default.homedir(), '.openclaw', 'workspace', 'MEMORY.md');
         let mostRecentTime = 0;
-        for (const file of files) {
-            if (file.endsWith('.json')) {
-                const filePath = path_1.default.join(memoryStoreDir, file);
-                const stats = fs_1.default.statSync(filePath);
-                if (stats.mtime.getTime() > mostRecentTime) {
-                    mostRecentTime = stats.mtime.getTime();
-                    mostRecentFile = file;
+        let mostRecentFile = '';
+        // Check MEMORY.md
+        if (fs_1.default.existsSync(memoryMdPath)) {
+            const stats = fs_1.default.statSync(memoryMdPath);
+            if (stats.mtime.getTime() > mostRecentTime) {
+                mostRecentTime = stats.mtime.getTime();
+                mostRecentFile = 'MEMORY.md';
+            }
+        }
+        // Check daily memory files
+        if (fs_1.default.existsSync(openclawMemoryDir)) {
+            const files = fs_1.default.readdirSync(openclawMemoryDir);
+            for (const file of files) {
+                if (file.endsWith('.md')) {
+                    const filePath = path_1.default.join(openclawMemoryDir, file);
+                    const stats = fs_1.default.statSync(filePath);
+                    if (stats.mtime.getTime() > mostRecentTime) {
+                        mostRecentTime = stats.mtime.getTime();
+                        mostRecentFile = file;
+                    }
                 }
             }
         }
@@ -71,12 +121,9 @@ function getRecentMemoryActivity(memoryStoreDir) {
         return 'Unknown';
     }
 }
-// Interface with memory system via subprocess if needed
+// OpenClaw native memory interface
 async function getMemorySystemDashboardData() {
-    // Try to import and call memory system's dashboard function
     try {
-        // This would require running a subprocess to call memory_system.py
-        // For now, return the JSON file data
         return loadMemoryData();
     }
     catch (error) {
