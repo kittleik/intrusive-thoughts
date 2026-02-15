@@ -189,7 +189,7 @@ def apply_night_summary_influence(mood_weights: Dict[str, float], script_dir: Pa
         
         if sessions > 0:
             print(f"  🌙 Night summary influence: {sessions} sessions, {energy_avg} energy, productive={productive}", file=sys.stderr)
-            
+
             if productive and sessions >= 3 and energy_avg in ["high", "medium"]:
                 # Productive night: bias toward momentum moods
                 if "determined" in mood_weights:
@@ -209,6 +209,7 @@ def apply_night_summary_influence(mood_weights: Dict[str, float], script_dir: Pa
                     mood_weights["curious"] *= 1.2
                     print(f"    ↑ Boosting curious (recovery from rough night)", file=sys.stderr)
                 night_factors.append("recovering from rough night")
+
         
     except (FileNotFoundError, json.JSONDecodeError):
         # No night summary available, no influence

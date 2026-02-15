@@ -1,7 +1,8 @@
 #!/bin/bash
 # Log what the agent did AND drift the mood based on outcome
-# Usage: log_result.sh <thought_id> <mood> "<summary>" [energy: high|neutral|low] [vibe: positive|neutral|negative]
-# Example: log_result.sh build-tool night "Built a disk usage dashboard" high positive
+# Usage: log_result.sh <thought_id> <mood> "<summary>" [energy: high|neutral|low] [vibe: positive|neutral|negative] [--shipped]
+# Example: log_result.sh build-tool night "Built a disk usage dashboard" high positive --shipped
+# The --shipped flag marks that this activity produced concrete, shippable output
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 source "$SCRIPT_DIR/load_config.sh"
@@ -9,11 +10,34 @@ source "$SCRIPT_DIR/load_config.sh"
 HISTORY_FILE="$DATA_DIR/history.json"
 MOOD_FILE="$DATA_DIR/today_mood.json"
 
-THOUGHT_ID="${1:-unknown}"
-MOOD="${2:-unknown}"
-SUMMARY="${3:-No summary provided}"
-ENERGY="${4:-neutral}"
-VIBE="${5:-neutral}"
+# Parse arguments, checking for --shipped flag
+SHIPPED=false
+<<<<<<< Updated upstream
+ARGS=("$@")
+for i in "${!ARGS[@]}"; do
+    if [[ "${ARGS[$i]}" == "--shipped" ]]; then
+        SHIPPED=true
+        unset ARGS[$i]
+    fi
+done
+# Repack args without --shipped
+ARGS=("${ARGS[@]}")
+=======
+ARGS=()
+for arg in "$@"; do
+    if [[ "$arg" == "--shipped" ]]; then
+        SHIPPED=true
+    else
+        ARGS+=("$arg")
+    fi
+done
+>>>>>>> Stashed changes
+
+THOUGHT_ID="${ARGS[0]:-unknown}"
+MOOD="${ARGS[1]:-unknown}"
+SUMMARY="${ARGS[2]:-No summary provided}"
+ENERGY="${ARGS[3]:-neutral}"
+VIBE="${ARGS[4]:-neutral}"
 TIMESTAMP=$(date -Iseconds)
 
 python3 << PYEOF
@@ -33,7 +57,8 @@ entry = {
     'thought_id': '$THOUGHT_ID',
     'summary': '''$SUMMARY''',
     'energy': '$ENERGY',
-    'vibe': '$VIBE'
+    'vibe': '$VIBE',
+    'shipped': $SHIPPED
 }
 history.append(entry)
 history = history[-500:]

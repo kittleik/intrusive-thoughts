@@ -351,6 +351,35 @@ router.get('/why', async (_req, res) => {
   }
 });
 
+// GET /api/roi
+router.get('/roi', async (_req, res) => {
+  try {
+    // Run ROI tracker to generate fresh data
+    await execAsync('./roi_tracker.py --json', {
+      cwd: getDataDir(),
+      timeout: 10000
+    });
+    
+    // Load the generated ROI data
+    const roiPath = path.join(getDataDir(), 'log', 'roi.json');
+    const roiData = JSON.parse(fs.readFileSync(roiPath, 'utf8'));
+    res.json(roiData);
+  } catch (error) {
+    console.error('Error in /api/roi:', error);
+<<<<<<< Updated upstream
+    // Return empty data structure if ROI tracking fails
+=======
+>>>>>>> Stashed changes
+    res.json({
+      generated_at: new Date().toISOString(),
+      total_history_entries: 0,
+      thoughts_analyzed: 0,
+      roi_data: {},
+      error: 'ROI data not available'
+    });
+  }
+});
+
 // POST /api/set-mood
 router.post('/set-mood', async (req, res) => {
   try {

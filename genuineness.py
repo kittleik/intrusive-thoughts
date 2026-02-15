@@ -424,6 +424,64 @@ def compute_surprise_index(data: dict) -> Tuple[float, str]:
 
 
 # ---------------------------------------------------------------------------
+# Real-time Genuineness Check
+# ---------------------------------------------------------------------------
+
+def check_genuineness(thought_prompt: str, mood: dict) -> Tuple[float, str]:
+    """
+    Check if a thought prompt feels performative for the current mood.
+    Returns (genuineness_score 0-1, explanation)
+    """
+    if not mood or not thought_prompt:
+        return 0.5, "Insufficient data"
+    
+    mood_name = mood.get('name', '').lower()
+    prompt_lower = thought_prompt.lower()
+    
+    # Simple heuristics for performative patterns
+    performative_patterns = {
+        'chaotic': ['organize', 'systematic', 'methodical'],
+        'cozy': ['aggressive', 'disruptive'], 
+        'philosophical': ['quick', 'fast', 'minimal'],
+        'hyperfocus': ['casual', 'random', 'distract'],
+        'social': ['alone', 'isolate'],
+        'restless': ['slow', 'patient', 'wait']
+    }
+    
+    genuine_patterns = {
+        'chaotic': ['creative', 'experiment', 'new'],
+        'cozy': ['comfortable', 'gentle', 'warm'],
+        'philosophical': ['deep', 'meaning', 'reflect'],
+        'hyperfocus': ['build', 'focus', 'concentrate'],
+        'social': ['share', 'connect', 'interact'],
+        'restless': ['energy', 'action', 'move']
+    }
+    
+    score = 0.5
+    reasons = []
+    
+    # Check for mood alignment
+    for mood_key in performative_patterns:
+        if mood_key in mood_name:
+            for bad_word in performative_patterns[mood_key]:
+                if bad_word in prompt_lower:
+                    score -= 0.2
+                    reasons.append(f"'{bad_word}' conflicts with {mood_name}")
+            
+            for good_word in genuine_patterns[mood_key]:
+                if good_word in prompt_lower:
+                    score += 0.15
+                    reasons.append(f"'{good_word}' aligns with {mood_name}")
+    
+    score = max(0.0, min(1.0, score))
+    explanation = f"{mood_name} mood | Score: {score:.2f}"
+    if reasons:
+        explanation += f" | {'; '.join(reasons[:2])}"
+    
+    return score, explanation
+
+
+# ---------------------------------------------------------------------------
 # Tracking — called during normal operation
 # ---------------------------------------------------------------------------
 

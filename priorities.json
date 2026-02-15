@@ -1,0 +1,11 @@
+{
+  "critical": [
+    "human-request",
+    "system-alert", 
+    "deadline"
+  ],
+  "high": [
+    "bug-report",
+    "security"
+  ]
+}

@@ -6,21 +6,87 @@ from pathlib import Path
 from datetime import datetime, timedelta
 from collections import defaultdict, Counter
 import calendar
+import re
 from config import get_file_path, get_human_name
 
-MOOD_HISTORY_FILE = get_file_path("mood_history.json")
+MOOD_PATTERNS_FILE = Path(__file__).parent / "mood_patterns.md"
 TODAY_MOOD_FILE = get_file_path("today_mood.json")
 
 def load_mood_history():
-    """Load mood history, creating empty structure if needed."""
+    """Load mood history from markdown format."""
+    if not MOOD_PATTERNS_FILE.exists():
+        return {"version": 1, "history": []}
+    
     try:
-        return json.loads(MOOD_HISTORY_FILE.read_text())
-    except:
+        content = MOOD_PATTERNS_FILE.read_text()
+        history = []
+        
+        # Parse markdown format: ## YYYY-MM-DD sections
+        date_sections = re.split(r'^## (\d{4}-\d{2}-\d{2})', content, flags=re.MULTILINE)[1:]
+        
+        for i in range(0, len(date_sections), 2):
+            if i + 1 >= len(date_sections):
+                continue
+                
+            date = date_sections[i]
+            section_content = date_sections[i + 1].strip()
+            
+            # Parse section content
+            mood_id = "unknown"
+            energy_score = 0
+            vibe_score = 0
+            description = ""
+            
+            for line in section_content.split('\n'):
+                line = line.strip()
+                if line.startswith('**Mood:**'):
+                    mood_match = re.search(r'\*\*Mood:\*\*\s*(\w+)', line)
+                    if mood_match:
+                        mood_id = mood_match.group(1)
+                elif line.startswith('**Energy:**'):
+                    energy_match = re.search(r'\*\*Energy:\*\*\s*(-?\d+)', line)
+                    if energy_match:
+                        energy_score = int(energy_match.group(1))
+                elif line.startswith('**Vibe:**'):
+                    vibe_match = re.search(r'\*\*Vibe:\*\*\s*(-?\d+)', line)
+                    if vibe_match:
+                        vibe_score = int(vibe_match.group(1))
+                elif line.startswith('**Reason:**'):
+                    description = line.replace('**Reason:**', '').strip()
+            
+            history.append({
+                "date": date,
+                "mood_id": mood_id,
+                "energy_score": energy_score,
+                "vibe_score": vibe_score,
+                "description": description,
+                "recorded_at": datetime.strptime(date, "%Y-%m-%d").isoformat()
+            })
+        
+        return {"version": 1, "history": history}
+    except Exception as e:
+        print(f"Error parsing mood patterns: {e}")
         return {"version": 1, "history": []}
 
 def save_mood_history(data):
-    """Save mood history to file."""
-    MOOD_HISTORY_FILE.write_text(json.dumps(data, indent=2))
+    """Save mood history to markdown format."""
+    content = "# Mood Patterns\n\n"
+    content += f"_Generated on {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}_\n\n"
+    
+    for entry in data.get("history", []):
+        date = entry["date"]
+        mood_id = entry.get("mood_id", "unknown")
+        energy_score = entry.get("energy_score", 0)
+        vibe_score = entry.get("vibe_score", 0)
+        description = entry.get("description", "")
+        
+        content += f"## {date}\n\n"
+        content += f"**Mood:** {mood_id}\n"
+        content += f"**Energy:** {energy_score}\n"
+        content += f"**Vibe:** {vibe_score}\n"
+        content += f"**Reason:** {description}\n\n"
+    
+    MOOD_PATTERNS_FILE.write_text(content)
 
 def append_today_mood():
     """Append today's mood to history if not already recorded."""

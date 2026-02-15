@@ -1,0 +1,26 @@
+{
+  "light": [
+    "moltbook-social",
+    "random-thought", 
+    "check-projects",
+    "ask-preference",
+    "moltbook-night"
+  ],
+  "standard": [
+    "build-tool",
+    "upgrade-project",
+    "ask-opinion",
+    "ask-feedback", 
+    "share-discovery",
+    "system-tinker",
+    "memory-review"
+  ],
+  "heavy": [
+    "learn",
+    "deep-dive",
+    "creative-chaos",
+    "pitch-idea",
+    "install-explore",
+    "night-journal"
+  ]
+}

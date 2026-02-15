@@ -15,9 +15,6 @@ journal/*.md
 
 # Runtime data directories (created by setup.sh)
 health/
-memory_store/
-wal/
-buffer/
 evolution/
 trust_store/
 

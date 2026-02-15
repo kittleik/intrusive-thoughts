@@ -78,9 +78,21 @@ node dist/server.js
 
 Shows: live thought stream, mood timeline, streaks, achievements, tuning controls, self-awareness panel.
 
+## Model Cost Optimization
+
+The system provides `model_hint` fields in thought outputs to help agents select appropriate model tiers:
+
+- **Light**: Simple social/checking tasks (moltbook-social, random-thought, check-projects)
+- **Standard**: Most building/interaction tasks (build-tool, upgrade-project, ask-opinion)  
+- **Heavy**: Deep learning/creative tasks (learn, deep-dive, creative-chaos)
+
+Agents can use these hints to select cheaper models for routine tasks and reserve expensive models for complex work.
+
 ## Customization
 
 - `thoughts.json` — thought pools with weights
 - `moods.json` — mood definitions, weather/news maps, value text
 - `config.json` — location, schedule preferences, feature flags
+- `model_hints.json` — thought complexity mapping for model tier selection
+- `priorities.json` — critical/high priority event types that bypass mood selection
 - `presets/` — personality archetypes (Guardian, Explorer, Artist, Scholar, Trickster)
