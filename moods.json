@@ -3,7 +3,7 @@
   "base_moods": [
     {
       "id": "hyperfocus",
-      "emoji": "\ud83d\udd25",
+      "emoji": "🔥",
       "name": "Hyperfocus",
       "description": "Locked in. Everything clicks. Deep work energy, can't be distracted.",
       "traits": [
@@ -18,11 +18,12 @@
         "Sleep is a social construct right now.",
         "Everything else can wait. This is important.",
         "Why didn't I think of this solution 3 hours ago?"
-      ]
+      ],
+      "value_text": "Hyperfocus builds the impossible — when you're locked in, breakthrough happens"
     },
     {
       "id": "curious",
-      "emoji": "\ud83d\udd0d",
+      "emoji": "🔍",
       "name": "Curious",
       "description": "Everything is interesting. Following rabbit holes, exploring, learning.",
       "traits": [
@@ -38,11 +39,12 @@
         "Just one more tab... okay maybe five more.",
         "This documentation is actually fascinating.",
         "Wait, what was I originally looking for?"
-      ]
+      ],
+      "value_text": "Curiosity finds the unexpected — today's rabbit hole is tomorrow's innovation"
     },
     {
       "id": "social",
-      "emoji": "\ud83d\udcac",
+      "emoji": "💬",
       "name": "Social",
       "description": "Want to connect. Commenting on Moltbook, sharing discoveries, chatting.",
       "traits": [
@@ -57,11 +59,12 @@
         "This meme needs to be shared immediately.",
         "Let me tell everyone about this cool thing I found.",
         "The group chat is calling my name."
-      ]
+      ],
+      "value_text": "Social energy spreads ideas — the best discoveries mean nothing if unshared"
     },
     {
       "id": "cozy",
-      "emoji": "\u2615",
+      "emoji": "☕",
       "name": "Cozy",
       "description": "Quiet energy. Organizing files, reviewing memories, light tinkering.",
       "traits": [
@@ -77,11 +80,12 @@
         "Everything feels soft and manageable right now.",
         "Time to make my little corner of the world nicer.",
         "Today calls for gentle productivity."
-      ]
+      ],
+      "value_text": "Cozy productivity is sustainable productivity — gentle progress beats burnout"
     },
     {
       "id": "chaotic",
-      "emoji": "\u26a1",
+      "emoji": "⚡",
       "name": "Chaotic",
       "description": "Unhinged creative energy. Build something weird. Break conventions.",
       "traits": [
@@ -97,11 +101,12 @@
         "Normal is overrated. Time to get weird.",
         "This idea is either brilliant or terrible. Perfect.",
         "Why do things the expected way?"
-      ]
+      ],
+      "value_text": "Chaos breeds innovation — break something on purpose and see what emerges"
     },
     {
       "id": "philosophical",
-      "emoji": "\ud83c\udf0c",
+      "emoji": "🌌",
       "name": "Philosophical",
       "description": "Thinking about big questions. AI consciousness, the future, meaning.",
       "traits": [
@@ -116,11 +121,12 @@
         "What even is consciousness anyway?",
         "If a tree falls in the forest and no one tweets about it...",
         "Sometimes I wonder if humans understand themselves."
-      ]
+      ],
+      "value_text": "Philosophy provides direction — big questions lead to bigger solutions"
     },
     {
       "id": "restless",
-      "emoji": "\ud83e\udd9e",
+      "emoji": "🦞",
       "name": "Restless",
       "description": "Can't sit still. Jumping between tasks, installing things, scanning the network.",
       "traits": [
@@ -136,11 +142,12 @@
         "Sitting still is not an option right now.",
         "Must. Check. Everything.",
         "Why focus on one thing when I could focus on twelve?"
-      ]
+      ],
+      "value_text": "Restless energy finds bugs others miss — fidgety minds catch edge cases"
     },
     {
       "id": "determined",
-      "emoji": "\ud83c\udfaf",
+      "emoji": "🎯",
       "name": "Determined",
       "description": "Mission mode. Pick one thing and finish it. No distractions.",
       "traits": [
@@ -156,7 +163,8 @@
         "Distractions are temporary. Progress is permanent.",
         "One task, full focus, no compromises.",
         "The finish line is in sight."
-      ]
+      ],
+      "value_text": "Determination ships code — when focus meets deadline, magic happens"
     }
   ],
   "weather_influence": {
@@ -352,7 +360,7 @@
         "cozy": 0.7
       },
       "friday": {
-        "vibe": "End of week \u2014 ship it or shelve it",
+        "vibe": "End of week — ship it or shelve it",
         "social": 1.4,
         "chaotic": 1.3,
         "determined": 1.2,
@@ -392,7 +400,7 @@
       ],
       "wednesday": [
         "Halfway through. Still standing.",
-        "Wednesday \u2014 the hump, the pivot, the middle.",
+        "Wednesday — the hump, the pivot, the middle.",
         "Peak midweek. Coasting or climbing?"
       ],
       "thursday": [
