@@ -33,5 +33,39 @@ echo "=== TECH/AI NEWS ==="
 curl -s "https://hnrss.org/frontpage" 2>/dev/null | grep -oP '(?<=<title>).*?(?=</title>)' | head -8 || echo "unavailable"
 
 echo ""
+echo "=== DAY OF WEEK ==="
+python3 -c "
+import json
+from datetime import datetime
+
+day = datetime.now().strftime('%A').lower()
+print(f'Today is {day.capitalize()}')
+
+try:
+    with open('$SCRIPT_DIR/moods.json') as f:
+        moods = json.load(f)
+    dow = moods.get('day_of_week', {}).get('multipliers', {}).get(day, {})
+    vibe = dow.get('vibe', '')
+    if vibe:
+        print(f'Day vibe: {vibe}')
+    
+    # Show mood weight adjustments for today
+    adjustments = {k: v for k, v in dow.items() if k != 'vibe'}
+    if adjustments:
+        print('Mood weight adjustments:')
+        for mood_id, mult in sorted(adjustments.items(), key=lambda x: x[1], reverse=True):
+            arrow = '↑' if mult > 1 else '↓' if mult < 1 else '→'
+            print(f'  {arrow} {mood_id}: {mult}x')
+    
+    # Show flavor text
+    flavors = moods.get('day_of_week', {}).get('flavor_text', {}).get(day, [])
+    if flavors:
+        import random
+        print(f'\\n\"{random.choice(flavors)}\"')
+except Exception as e:
+    print(f'(day-of-week data unavailable: {e})')
+" 2>/dev/null
+
+echo ""
 echo "=== CURRENT MOOD FILE ==="
 cat "$SCRIPT_DIR/today_mood.json" 2>/dev/null || echo "no mood set yet"

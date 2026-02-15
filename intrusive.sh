@@ -306,6 +306,21 @@ try:
 except:
     pass
 
+# Load day-of-week multipliers
+day_of_week_mult = {}
+day_of_week_vibe = ''
+try:
+    with open('$SCRIPT_DIR/moods.json') as f:
+        moods_config = json.load(f)
+    dow = datetime.now().strftime('%A').lower()
+    dow_data = moods_config.get('day_of_week', {}).get('multipliers', {}).get(dow, {})
+    day_of_week_vibe = dow_data.get('vibe', '')
+    day_of_week_mult = {k: v for k, v in dow_data.items() if k != 'vibe'}
+    # Get day flavor text
+    day_flavors = moods_config.get('day_of_week', {}).get('flavor_text', {}).get(dow, [])
+except:
+    day_flavors = []
+
 # Load streak weights (anti-rut system)
 streak_weights = {}
 try:
@@ -432,6 +447,10 @@ jitter = random.randint(0, mood_data.get('jitter_seconds', mood_data.get('jitter
 mood_context = ''
 if today_mood:
     mood_context = f\"{today_mood.get('emoji','')} {today_mood.get('name','')}: {today_mood.get('description','')}\"
+    if day_of_week_vibe:
+        mood_context += f' | {datetime.now().strftime(\"%A\")}: {day_of_week_vibe}'
+    if day_flavors:
+        mood_context += f' — \"{random.choice(day_flavors)}\"'
 
 # Create decision trace for logging
 decision_trace = {
