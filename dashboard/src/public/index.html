@@ -1046,7 +1046,9 @@
         document.getElementById('currentPhase').textContent = data.current_phase || 'unknown';
         
         if (data.schedule && data.schedule.length > 0) {
-          container.innerHTML = data.schedule.map(job => {
+          // Hide disabled template jobs
+          const activeJobs = data.schedule.filter(job => job.enabled);
+          container.innerHTML = activeJobs.map(job => {
             const statusDot = !job.enabled ? '⏸️' : 
                              job.last_status === 'ok' ? '🟢' : 
                              job.last_status === 'error' ? '🔴' : '⚪';
@@ -1066,20 +1068,34 @@
               scheduleText = `One-shot: ${d.toLocaleTimeString('en-GB', {hour:'2-digit', minute:'2-digit'})} today`;
             }
             
-            // Last run info
+            // Last run info - human readable
             let lastRunText = '';
             if (job.last_run) {
-              const ago = Math.round((Date.now() - new Date(job.last_run).getTime()) / 60000);
-              const duration = job.last_duration_ms ? `${Math.round(job.last_duration_ms/1000)}s` : '';
-              lastRunText = `Last: ${ago}m ago ${duration ? `(${duration})` : ''}`;
+              const lastDate = new Date(job.last_run);
+              const agoMs = Date.now() - lastDate.getTime();
+              const agoMin = Math.round(agoMs / 60000);
+              let agoStr;
+              if (agoMin < 60) agoStr = `${agoMin}m ago`;
+              else if (agoMin < 1440) agoStr = `${Math.floor(agoMin/60)}h ${agoMin%60}m ago`;
+              else agoStr = `${Math.floor(agoMin/1440)}d ago`;
+              
+              const timeStr = lastDate.toLocaleTimeString('en-GB', {hour:'2-digit', minute:'2-digit'});
+              const duration = job.last_duration_ms ? ` (${Math.round(job.last_duration_ms/1000)}s)` : '';
+              lastRunText = `Ran ${timeStr} · ${agoStr}${duration}`;
             }
             
-            // Next run
+            // Next run - human readable  
             let nextRunText = '';
             if (job.next_run) {
               const next = new Date(job.next_run);
-              const inMin = Math.round((next.getTime() - Date.now()) / 60000);
-              nextRunText = inMin > 0 ? `Next: in ${inMin}m` : 'Due now';
+              const inMs = next.getTime() - Date.now();
+              const inMin = Math.round(inMs / 60000);
+              const nextTime = next.toLocaleTimeString('en-GB', {hour:'2-digit', minute:'2-digit'});
+              let inStr;
+              if (inMin <= 0) inStr = 'due now';
+              else if (inMin < 60) inStr = `in ${inMin}m`;
+              else inStr = `in ${Math.floor(inMin/60)}h ${inMin%60}m`;
+              nextRunText = `Next: ${nextTime} (${inStr})`;
             }
             
             return `
