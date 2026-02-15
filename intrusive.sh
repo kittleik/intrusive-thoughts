@@ -277,93 +277,6 @@ print(f'  Recent history: {len(import_data.get(\"recent_history\", []))} entries
     --priority)
         if [[ -z "$2" ]]; then
             echo "Usage: intrusive.sh --priority <priority-type>"
-<<<<<<< Updated upstream
-            echo "Priority types from priorities.json:"
-            if [[ -f "$SCRIPT_DIR/priorities.json" ]]; then
-                python3 -c "
-import json
-with open('$SCRIPT_DIR/priorities.json') as f:
-    priorities = json.load(f)
-for level, types in priorities.items():
-    print(f'  {level}: {', '.join(types)}')
-"
-            fi
-            exit 1
-        fi
-        PRIORITY_TYPE="$2"
-        
-        # Load priorities and find matching critical/high priority thoughts
-        PRIORITY_THOUGHT=$(python3 -c "
-import json, random
-with open('$SCRIPT_DIR/priorities.json') as f:
-    priorities = json.load(f)
-with open('$SCRIPT_DIR/thoughts.json') as f:
-    thoughts_data = json.load(f)
-
-priority_type = '$PRIORITY_TYPE'
-if priority_type not in priorities['critical'] and priority_type not in priorities['high']:
-    print('ERROR: Unknown priority type: $PRIORITY_TYPE')
-    exit(1)
-
-# Get all thoughts from day and night moods
-all_thoughts = []
-for mood in ['day', 'night']:
-    if mood in thoughts_data['moods']:
-        all_thoughts.extend(thoughts_data['moods'][mood]['thoughts'])
-
-# Find thoughts that match the priority type pattern or are suitable for critical events
-if priority_type == 'human-request':
-    # Human requests should be interactive thoughts
-    candidates = [t for t in all_thoughts if t['id'] in ['ask-opinion', 'ask-preference', 'ask-feedback', 'share-discovery']]
-elif priority_type == 'system-alert':
-    # System alerts should be monitoring/maintenance thoughts  
-    candidates = [t for t in all_thoughts if t['id'] in ['check-projects', 'system-tinker', 'health-check']]
-elif priority_type == 'deadline':
-    # Deadlines should be focused work thoughts
-    candidates = [t for t in all_thoughts if t['id'] in ['build-tool', 'upgrade-project', 'learn']]
-elif priority_type == 'bug-report':
-    # Bug reports should be investigation/fix thoughts
-    candidates = [t for t in all_thoughts if t['id'] in ['system-tinker', 'check-projects', 'build-tool']]
-elif priority_type == 'security':
-    # Security issues should be system/audit thoughts
-    candidates = [t for t in all_thoughts if t['id'] in ['system-tinker', 'check-projects', 'audit']]
-else:
-    # Fallback to any available thought
-    candidates = all_thoughts
-
-if not candidates:
-    candidates = all_thoughts
-
-if candidates:
-    pick = random.choice(candidates)
-    print(json.dumps({
-        'id': pick['id'],
-        'prompt': pick['prompt'],
-        'jitter_seconds': 0,
-        'timeout_seconds': 300,
-        'mood': 'priority',
-        'today_mood': f'PRIORITY OVERRIDE: {priority_type}',
-        'mood_id': 'priority',
-        'priority_type': priority_type,
-        'skipped': []
-    }))
-else:
-    print('ERROR: No suitable thoughts found for priority type')
-")
-        
-        if [[ "$PRIORITY_THOUGHT" == ERROR:* ]]; then
-            echo "$PRIORITY_THOUGHT" >&2
-            exit 1
-        fi
-        
-        echo "$PRIORITY_THOUGHT"
-        
-        # Log the priority pick
-        TIMESTAMP=$(date -Iseconds)
-        THOUGHT_ID=$(echo "$PRIORITY_THOUGHT" | python3 -c "import json,sys; d=json.load(sys.stdin); print(d['id'])" 2>/dev/null)
-        echo "$TIMESTAMP | mood=priority | thought=$THOUGHT_ID | priority=$PRIORITY_TYPE" >> "$LOG_DIR/picks.log"
-        
-=======
             echo "Priority types: human-request, system-alert, deadline, bug-report, security"
             exit 1
         fi
@@ -410,7 +323,6 @@ try:
 except Exception as e:
     print(json.dumps({'error': str(e)}))
 "
->>>>>>> Stashed changes
         exit 0
         ;;
 esac

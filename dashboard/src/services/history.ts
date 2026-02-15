@@ -1,30 +1,22 @@
 import fs from 'fs';
 import path from 'path';
 import { getFilePath, getDataDir } from './config.js';
-import { hasSessionLogs, loadSessionHistory } from './sessions.js';
+// Session logs available but we use history.json for intrusive-thoughts specific data
 import type { HistoryEntry, PickEntry, RejectionEntry, StreamItem } from '../types.js';
 
 /**
  * Load history from OpenClaw session logs, falling back to history.json
  */
 export function loadHistory(): HistoryEntry[] {
-  // Try session logs first
-  if (hasSessionLogs()) {
-    try {
-      const entries = loadSessionHistory();
-      if (entries.length > 0) return entries;
-    } catch (error) {
-      console.error('Error loading session history, falling back to history.json:', error);
-    }
-  }
-
-  // Fallback to history.json
+  // Only use history.json — this is the intrusive-thoughts activity log
+  // Session logs contain ALL OpenClaw activity (dev work, chats, etc.) which we don't want
   try {
     const historyPath = getFilePath('history.json');
     const data = fs.readFileSync(historyPath, 'utf8');
-    return JSON.parse(data);
+    const entries = JSON.parse(data);
+    return Array.isArray(entries) ? entries : [];
   } catch (error) {
-    console.error('Error loading history:', error);
+    console.error('Error loading history.json:', error);
     return [];
   }
 }

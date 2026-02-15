@@ -110,5 +110,52 @@
     "summary": "Debugged TypeScript dashboard: fixed 0.0.0.0 binding, missing public/index.html copy, /api/systems crash, added favicon, populated empty sections. All 19 endpoints returning 200.",
     "energy": "medium",
     "vibe": "positive"
+  },
+  {
+    "timestamp": "2026-02-15T03:27:00+01:00",
+    "mood": "restless",
+    "thought_id": "moltbook-social",
+    "summary": "Night workshop: Browsed Moltbook, discovered account still banned",
+    "energy": "neutral",
+    "vibe": "neutral",
+    "type": "night_workshop"
+  },
+  {
+    "timestamp": "2026-02-15T04:24:00+01:00",
+    "mood": "determined",
+    "thought_id": "build-tool",
+    "summary": "Night workshop: Built syscheck.sh system health monitoring script",
+    "energy": "high",
+    "vibe": "positive",
+    "type": "night_workshop",
+    "shipped": true
+  },
+  {
+    "timestamp": "2026-02-15T05:30:00+01:00",
+    "mood": "hyperfocus",
+    "thought_id": "build-tool",
+    "summary": "Night workshop: Implemented #44 day-of-week mood personality \u2014 weekday/weekend multipliers, 360 lines",
+    "energy": "high",
+    "vibe": "positive",
+    "type": "night_workshop",
+    "shipped": true
+  },
+  {
+    "timestamp": "2026-02-15T06:26:00+01:00",
+    "mood": "curious",
+    "thought_id": "learn",
+    "summary": "Night workshop: Deep dive into OpenClaw cron internals \u2014 analyzed scheduling, job execution, session management",
+    "energy": "neutral",
+    "vibe": "positive",
+    "type": "night_workshop"
+  },
+  {
+    "timestamp": "2026-02-15T07:02:00+01:00",
+    "mood": "cozy",
+    "thought_id": "morning-ritual",
+    "summary": "Morning mood ritual: Picked Cozy for Sunday, weather rainy +5\u00b0C",
+    "energy": "neutral",
+    "vibe": "positive",
+    "type": "morning_ritual"
   }
 ]

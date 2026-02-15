@@ -844,17 +844,15 @@
         const data = await response.json();
         
         const container = document.getElementById('thoughtStream');
-        // Filter to only intrusive-thoughts activity (not dev session logs)
+        // Filter: keep intrusive-thoughts activity, exclude raw OpenClaw session logs
         const skillEntries = (data || []).filter(item => {
-          // Keep: mood picks, drifts, thought selections, night workshop, morning ritual
-          const validTypes = ['pick', 'rejection', 'mood_drift', 'mood_pick', 'night_workshop', 'morning_ritual', 'thought', 'impulse'];
-          if (validTypes.includes(item.type)) return true;
-          // Filter OUT raw session log entries (they have model names as mood, session UUIDs)
-          if (item.details?.model || item.details?.session) return false;
+          // Filter OUT raw session log entries (they have model names as mood, session UUIDs as thought_id)
           if (item.mood && item.mood.includes('claude')) return false;
-          // Keep entries with thought_ids that look like skill activity
-          if (item.thought_id && !item.thought_id.match(/^[0-9a-f]{8}-/)) return true;
-          return false;
+          if (item.details?.model && !item.type) return false;
+          // Filter out entries with "? → ?" broken data
+          if (item.summary && item.summary.includes('? →')) return false;
+          // Keep everything else (history.json entries are all intrusive-thoughts activity)
+          return true;
         });
         
         if (skillEntries.length > 0) {
@@ -894,10 +892,10 @@
           document.getElementById('totalToolCalls').textContent = data.achievements || 0;
           document.getElementById('totalCost').textContent = data.points || 0;
           
-          document.getElementById('sessionDetail').textContent = 'completed';
-          document.getElementById('messageDetail').textContent = 'thought picks';
-          document.getElementById('toolDetail').textContent = 'achievements';
-          document.getElementById('costDetail').textContent = 'points earned';
+          document.getElementById('sessionDetail').textContent = '';
+          document.getElementById('messageDetail').textContent = '';
+          document.getElementById('toolDetail').textContent = '';
+          document.getElementById('costDetail').textContent = '';
         }
       } catch (error) {
         console.error('Error loading activity stats:', error);

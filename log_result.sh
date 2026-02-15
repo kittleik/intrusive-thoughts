@@ -12,17 +12,6 @@ MOOD_FILE="$DATA_DIR/today_mood.json"
 
 # Parse arguments, checking for --shipped flag
 SHIPPED=false
-<<<<<<< Updated upstream
-ARGS=("$@")
-for i in "${!ARGS[@]}"; do
-    if [[ "${ARGS[$i]}" == "--shipped" ]]; then
-        SHIPPED=true
-        unset ARGS[$i]
-    fi
-done
-# Repack args without --shipped
-ARGS=("${ARGS[@]}")
-=======
 ARGS=()
 for arg in "$@"; do
     if [[ "$arg" == "--shipped" ]]; then
@@ -31,7 +20,6 @@ for arg in "$@"; do
         ARGS+=("$arg")
     fi
 done
->>>>>>> Stashed changes
 
 THOUGHT_ID="${ARGS[0]:-unknown}"
 MOOD="${ARGS[1]:-unknown}"
