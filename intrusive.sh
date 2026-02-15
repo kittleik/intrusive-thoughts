@@ -598,11 +598,11 @@ try:
             break
         pick = random.choice(remaining)
         genuineness_score, genuineness_reason = check_genuineness(pick['prompt'], today_mood, thought_id=pick['id'])
-            # Update model hint for new pick
-            for level, thoughts in hints.items():
-                if pick['id'] in thoughts:
-                    model_hint = level
-                    break
+        # Update model hint for new pick
+        for level, thoughts in hints.items():
+            if pick['id'] in thoughts:
+                model_hint = level
+                break
 except:
     pass
 
