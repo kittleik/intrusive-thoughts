@@ -874,6 +874,8 @@
         });
         
         if (skillEntries.length > 0) {
+          // Newest first
+          skillEntries.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
           container.innerHTML = skillEntries.slice(0, 15).map(item => {
             const typeEmoji = {pick: '✅', rejection: '❌', mood_drift: '🌊', mood_pick: '🎯', night_workshop: '🌙', morning_ritual: '🌅', activity: '⚡', observation: '👁️'}[item.type] || '💭';
             const isRejection = item.type === 'rejection' || item.rejected;
