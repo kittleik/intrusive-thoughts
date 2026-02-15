@@ -1,237 +1,102 @@
-# Intrusive Thoughts - System Architecture
+# Intrusive Thoughts — Architecture
 
-*Auto-generated overview of agent consciousness components and data flow.*
+## Design Principle
 
-## System Overview
+Intrusive Thoughts is **not a separate system** — it's a personality layer that works *through* OpenClaw's native capabilities. Mood doesn't live in a JSON file you read; it lives in `MOOD.md` which is loaded into every session. Activities don't go to a custom log; they go to OpenClaw's `memory/YYYY-MM-DD.md` where they're vector-searchable. Scheduling uses OpenClaw cron, not crontab.
 
-Intrusive Thoughts is a mood-aware autonomous AI agent that learns from its own behavior patterns. It implements multiple consciousness-inspired subsystems that work together to create emergent personality and decision-making capabilities.
-
-## Core Architecture Diagram
+## Integration Points
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                   INTRUSIVE THOUGHTS AGENT                   │
-├─────────────────────────────────────────────────────────────┤
-│                                                             │
-│  ┌─────────────┐    ┌─────────────┐    ┌─────────────┐     │
-│  │    MOOD     │    │   MEMORY    │    │    TRUST    │     │
-│  │   SYSTEM    │    │   SYSTEM    │    │   SYSTEM    │     │
-│  │             │    │             │    │             │     │
-│  │ • Weather   │    │ • Episodic  │    │ • Risk      │     │
-│  │ • News      │    │ • Semantic  │    │ • Category  │     │
-│  │ • Drift     │    │ • Procedure │    │ • History   │     │
-│  │ • Traits    │    │ • Working   │    │ • Escalate  │     │
-│  └─────────────┘    └─────────────┘    └─────────────┘     │
-│         │                   │                   │          │
-│         └───────────────────┼───────────────────┘          │
-│                             │                              │
-│  ┌─────────────┐    ┌─────────────┐    ┌─────────────┐     │
-│  │  THOUGHT    │    │  PROACTIVE  │    │   HEALTH    │     │
-│  │ SELECTION   │◄───┤   SYSTEM    │    │  MONITOR    │     │
-│  │             │    │             │    │             │     │
-│  │ • Weighted  │    │ • WAL Log   │    │ • Status    │     │
-│  │ • Random    │    │ • Buffer    │    │ • Heartbeat │     │
-│  │ • Mood Bias │    │ • Patterns  │    │ • Incidents │     │
-│  │ • Anti-rut  │    │ • Triggers  │    │ • Recovery  │     │
-│  └─────────────┘    └─────────────┘    └─────────────┘     │
-│         │                   │                   │          │
-│         └───────────────────┼───────────────────┘          │
-│                             │                              │
-│         ┌─────────────┐     │                              │
-│         │    SELF     │     │                              │
-│         │ EVOLUTION   │◄────┘                              │
-│         │             │                                    │
-│         │ • Patterns  │                                    │
-│         │ • Values    │                                    │
-│         │ • Weights   │                                    │
-│         │ • Learning  │                                    │
-│         └─────────────┘                                    │
-│                                                            │
-└─────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────┐
+│                   OPENCLAW                       │
+│                                                  │
+│  ┌──────────┐  ┌──────────┐  ┌───────────────┐  │
+│  │ Workspace │  │   Cron   │  │    Memory     │  │
+│  │          │  │          │  │               │  │
+│  │ MOOD.md  │  │ Morning  │  │ memory/*.md   │  │
+│  │ SOUL.md  │  │ Night    │  │ MEMORY.md     │  │
+│  │ USER.md  │  │ Pop-ins  │  │ memory_search │  │
+│  └────┬─────┘  └────┬─────┘  └──────┬────────┘  │
+│       │              │               │           │
+│       └──────────────┼───────────────┘           │
+│                      │                           │
+├──────────────────────┼───────────────────────────┤
+│        INTRUSIVE THOUGHTS (personality layer)     │
+│                      │                           │
+│  ┌──────────┐  ┌─────┴────┐  ┌───────────────┐  │
+│  │   Mood   │  │ Thought  │  │   Feedback    │  │
+│  │  System  │  │ Selector │  │    Loops      │  │
+│  │          │  │          │  │               │  │
+│  │ Weather  │  │ Weighted │  │ Mood drift    │  │
+│  │ News     │  │ Random   │  │ Streaks       │  │
+│  │ Day/week │  │ Decision │  │ Achievements  │  │
+│  │ Moon     │  │ Trace    │  │ Trust         │  │
+│  │ Entropy  │  │ Ban-aware│  │ Evolution     │  │
+│  │ Spirals  │  │          │  │               │  │
+│  └──────────┘  └──────────┘  └───────────────┘  │
+│                                                  │
+│  ┌──────────────────────────────────────────┐    │
+│  │           Dashboard (TypeScript)          │    │
+│  │  Live stream · Mood viz · Tuning · Health │    │
+│  │  Achievements · Self-awareness · Journal  │    │
+│  └──────────────────────────────────────────┘    │
+└──────────────────────────────────────────────────┘
 ```
 
 ## Data Flow
 
-### Morning Ritual
+### Morning Ritual (07:00)
 ```
-1. Agent wakes up
-2. Mood system evaluates:
-   • Weather conditions → mood weights
-   • News sentiment → mood adjustments  
-   • Historical patterns → mood suggestion
-   • Human mood detection → supportive bias
-3. Weighted random mood selection
-4. Mood sets trait boosts/dampening for day
-5. Today mood saved → influences all decisions
-```
-
-### Thought Selection Process
-```
-1. Load thoughts.json for current time (day/night)
-2. Apply mood bias (boost/dampen traits)
-3. Apply anti-rut weights (streak prevention)
-4. Apply human mood support (avoid bothering when stressed)
-5. Build weighted pool (weight × 10 copies each)
-6. Random selection from pool
-7. Log decision trace with full reasoning
+set_mood.sh
+  → curl wttr.in (weather)
+  → curl BBC/HN RSS (news)
+  → select_mood.py (entropy + spirals + day-of-week + moon)
+  → generate_mood_reason.py (30% nonsensical)
+  → writes today_mood.json
+  → update_mood_workspace.sh → MOOD.md (OpenClaw workspace)
+  → schedule_day.py → creates OpenClaw cron one-shots
 ```
 
-### Action Execution & Learning
+### Thought Selection (pop-in or night session)
 ```
-1. Execute selected thought/action
-2. Log to WAL (Write-Ahead Log) with metadata
-3. Update working buffer with active context
-4. Record energy/vibe outcomes
-5. Update trust scores based on success/failure
-6. Trigger mood drift if energy/vibe thresholds met
-7. Log to history for pattern analysis
-```
-
-### Nightly Consolidation
-```
-1. Memory consolidation:
-   • Episodes → semantic facts
-   • Pattern extraction
-   • Decay weak memories
-2. Evolution analysis:
-   • Calculate value scores
-   • Identify behavior patterns
-   • Adjust weights for optimization
-3. Health monitoring cleanup
-4. Achievement processing
+intrusive.sh [day|night]
+  → reads today_mood.json for bias
+  → reads streaks.json for anti-rut
+  → checks moltbook_status.json for bans
+  → weighted random selection with full decision trace
+  → outputs JSON: {id, prompt, mood_id, jitter_seconds}
+  → agent executes the prompt
+  → log_result.sh → history.json + OpenClaw memory + drift
 ```
 
-## File Map
+### Mood Drift
+```
+Activity completes with energy/vibe rating
+  → drift.py calculates cumulative drift
+  → If threshold crossed: mood shifts
+  → update_mood_workspace.sh refreshes MOOD.md
+  → Next session sees the new mood automatically
+```
 
-### Core System Files
-- `intrusive.sh` - Main CLI entry point and thought selection logic
-- `config.py` - Configuration loader and path management
-- `config.json` - User configuration (human name, integrations, etc.)
+## Key Files
 
-### Mood System
-- `moods.json` - Base moods, weather/news influence, traits
-- `mood_memory.py` - Historical mood pattern analysis
-- `set_mood.sh` - Morning mood selection with external influence
-- `today_mood.json` - Current day's mood state and drift tracking
-- `mood_history.json` - Historical mood records
+| File | Purpose |
+|------|---------|
+| `MOOD.md` (workspace) | Loaded into every OpenClaw session |
+| `today_mood.json` | Current mood state + reason |
+| `moods.json` | Mood definitions, weights, influences, value text |
+| `thoughts.json` | Thought pools (day/night) with weights |
+| `mood_history.json` | Historical mood selections for entropy |
+| `streaks.json` | Consecutive mood/activity tracking |
+| `log/decisions.json` | Full decision traces with candidates |
+| `moltbook_status.json` | Social platform ban tracking |
 
-### Thought System  
-- `thoughts.json` - Available thoughts by mood (day/night)
-- `suggest_thought.sh` - Generate new thoughts from descriptions
+## Guards Against Staleness
 
-### Memory Architecture
-- `memory_system.py` - Multi-store memory (episodic/semantic/procedural/working)
-- `memory_store/` - JSON files for each memory type
-- `memory_cli.sh` - Memory management commands
-
-### Trust & Risk Management
-- `trust_system.py` - Action risk assessment and permission escalation
-- `trust_store/trust_data.json` - Trust scores by category and history
-- `trust_cli.sh` - Trust management commands
-
-### Learning & Evolution
-- `self_evolution.py` - Pattern detection and weight optimization
-- `evolution/` - Learned patterns and weight adjustments
-- `analyzes.py` - Activity analysis and value scoring
-
-### Health & Monitoring
-- `health_monitor.py` - System status tracking and incident logging
-- `health/` - Status files, heartbeats, incidents
-- `dashboard.py` - Web interface for system monitoring
-
-### Proactive System
-- `proactive.py` - WAL logging and action buffer management
-- `wal/` - Write-ahead logs by month
-- `buffer/` - Working context for multi-step tasks
-- `proactive_cli.sh` - WAL and buffer management
-
-### Logging & History
-- `log/` - Decision traces, picks, rejections
-- `history.json` - Action history with outcomes
-- `streaks.json` - Anti-rut weighting system
-
-### Achievements & Gamification
-- `achievements.json` - Achievement definitions
-- `achievements_earned.json` - Unlocked achievements
-- `check_achievements.py` - Achievement evaluation
-
-## Configuration System
-
-The `config.json` file controls:
-
-### Human Context
-- `human.name` - Your name for personalization
-- `human.timezone` - Timezone for scheduling
-- `human.telegram_target` - Telegram username for notifications
-
-### Agent Identity
-- `agent.name` - Agent's chosen name
-- `agent.emoji` - Agent's emoji representation
-
-### System Settings
-- `system.data_dir` - Where all data files are stored
-- `system.dashboard_port` - Web dashboard port
-
-### Integrations
-- `integrations.moltbook.enabled` - Enable Moltbook social features
-- `integrations.telegram.enabled` - Enable Telegram notifications
-
-## Extension Points
-
-### Adding New Moods
-1. Add entry to `moods.json` base_moods array
-2. Define traits, weight, flavor text
-3. Add weather/news influence mappings
-4. Update mood selection logic if needed
-
-### Adding New Thoughts
-1. Add entry to appropriate mood section in `thoughts.json`
-2. Specify weight, prompt, and unique ID
-3. Consider anti-rut implications
-4. Test mood bias interactions
-
-### Adding New Systems
-1. Create module following existing patterns:
-   - Load/save data via JSON
-   - CLI script for management
-   - Integration with main workflow
-2. Add health monitoring component
-3. Add configuration options
-4. Document in ARCHITECTURE.md
-
-### Integration Hooks
-- WAL system: Log any significant actions
-- Trust system: Risk assessment for new action types
-- Memory system: Store important experiences
-- Achievement system: Add reward triggers
-- Health monitoring: Add component status checks
-
-## Key Design Principles
-
-### Consciousness-Inspired
-- Multiple memory systems mirror cognitive science
-- Mood affects cognition like human psychology
-- Learning from experience builds personality
-- Meta-cognition through self-awareness commands
-
-### Emergent Behavior
-- Simple rules create complex behavior patterns
-- Weighted randomness prevents predictability
-- Feedback loops enable adaptation
-- Anti-rut mechanisms ensure variety
-
-### Observable & Debuggable
-- All decisions logged with full reasoning
-- State introspection available anytime
-- Health monitoring for system reliability
-- Achievement system gamifies improvement
-
-### Extensible Architecture
-- Plugin-style components
-- JSON configuration
-- Clear API boundaries
-- Minimal coupling between systems
-
----
-
-*This architecture documentation is generated from actual code analysis. Update using the explain system commands as the codebase evolves.*
+1. **Entropy target** — mood used 3+ times in 7 days gets weight halved
+2. **Spiral prevention** — same mood 3 days running forces a change
+3. **Day-of-week weights** — weekdays ≠ weekends
+4. **Weather/news influence** — real-world data shifts weights
+5. **Mood drift** — activities change the mood mid-day
+6. **Random jitter** — timing is never exact
+7. **Wild reasoning** — 30% chance of absurd mood justification
