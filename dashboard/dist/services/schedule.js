@@ -36,6 +36,12 @@ async function getScheduleData() {
                 delete_after_run: j.deleteAfterRun || false
             };
         });
+        // Sort by next run time (soonest first), enabled before disabled
+        schedule.sort((a, b) => {
+            const aNext = a.next_run ? new Date(a.next_run).getTime() : Infinity;
+            const bNext = b.next_run ? new Date(b.next_run).getTime() : Infinity;
+            return aNext - bNext;
+        });
         return {
             schedule,
             current_phase: getCurrentPhase()
