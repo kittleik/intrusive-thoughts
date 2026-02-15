@@ -283,6 +283,22 @@ mkdir -p "$LOG_DIR"
 
 MOOD="${1:-day}"
 
+# Min-interval guard: skip if last pick was less than 30 seconds ago
+DECISIONS_FILE="$LOG_DIR/decisions.json"
+if [[ -f "$DECISIONS_FILE" ]]; then
+    LAST_TIMESTAMP=$(jq -r '.[-1].timestamp // empty' "$DECISIONS_FILE" 2>/dev/null)
+    if [[ -n "$LAST_TIMESTAMP" ]]; then
+        LAST_EPOCH=$(date -d "$LAST_TIMESTAMP" +%s 2>/dev/null || echo "0")
+        NOW_EPOCH=$(date +%s)
+        TIME_DIFF=$((NOW_EPOCH - LAST_EPOCH))
+        
+        if [[ $TIME_DIFF -lt 30 ]]; then
+            echo "Skipping pick - last decision was $TIME_DIFF seconds ago (minimum 30 seconds required)" >&2
+            exit 0
+        fi
+    fi
+fi
+
 # Pick a weighted random thought, influenced by today's mood and streak weights  
 # Use temporary file to capture all output reliably
 TEMP_OUTPUT="/tmp/intrusive_output_$$.txt"
@@ -557,8 +573,8 @@ try:
 
     decisions.append(decision)
 
-    # Keep only last 1000 entries to prevent file from growing too large  
-    decisions = decisions[-1000:]
+    # Keep only last 100 entries to prevent file from growing too large  
+    decisions = decisions[-100:]
 
     with open(decisions_file, 'w') as f:
         json.dump(decisions, f, indent=2)
