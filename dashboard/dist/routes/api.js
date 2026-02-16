@@ -368,15 +368,12 @@ router.get('/why', async (_req, res) => {
 // GET /api/roi
 router.get('/roi', async (_req, res) => {
     try {
-        // Run ROI tracker to generate fresh data
-        await execAsync('./roi_tracker.py --json', {
+        const format = _req.query.format === 'dashboard' ? '--dashboard' : '--json';
+        const { stdout } = await execAsync(`python3 ./roi_tracker.py ${format}`, {
             cwd: (0, config_js_1.getDataDir)(),
             timeout: 10000
         });
-        // Load the generated ROI data
-        const roiPath = path_1.default.join((0, config_js_1.getDataDir)(), 'log', 'roi.json');
-        const roiData = JSON.parse(fs_1.default.readFileSync(roiPath, 'utf8'));
-        res.json(roiData);
+        res.json(JSON.parse(stdout));
     }
     catch (error) {
         console.error('Error in /api/roi:', error);

@@ -751,6 +751,29 @@
       </div>
     </section>
 
+    <!-- ROI Analytics -->
+    <section class="section">
+      <div class="section-header">
+        <span class="section-icon">📊</span>
+        <h2 class="section-title">ROI Analytics</h2>
+        <span class="section-subtitle">which thoughts actually ship?</span>
+      </div>
+      <div id="roiPanel" style="display:grid; gap:1rem;">
+        <div id="roiOverall" style="display:flex; gap:1.5rem; flex-wrap:wrap; font-size:0.9rem; opacity:0.8;"></div>
+        <div id="roiChart" style="display:grid; gap:0.4rem;"></div>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem;">
+          <div>
+            <h3 style="font-size:0.85rem; opacity:0.6; margin-bottom:0.5rem;">⏰ Best Time to Ship</h3>
+            <div id="roiTime" style="font-size:0.85rem;"></div>
+          </div>
+          <div>
+            <h3 style="font-size:0.85rem; opacity:0.6; margin-bottom:0.5rem;">🛠 Skills Used</h3>
+            <div id="roiSkills" style="font-size:0.85rem;"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
     <!-- ASCII Art Separator -->
     <div class="ascii-art" id="asciiArt">
       ╭─────────────────────────────────────╮
@@ -818,7 +841,8 @@
           loadNightWorkshop(),
           loadSchedule(),
           loadAchievements(),
-          loadHealthStatus()
+          loadHealthStatus(),
+          loadROI()
         ]);
       } catch (error) {
         console.error('Error loading dashboard:', error);
@@ -874,6 +898,8 @@
         });
         
         if (skillEntries.length > 0) {
+          // Newest first
+          skillEntries.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
           container.innerHTML = skillEntries.slice(0, 15).map(item => {
             const typeEmoji = {pick: '✅', rejection: '❌', mood_drift: '🌊', mood_pick: '🎯', night_workshop: '🌙', morning_ritual: '🌅', activity: '⚡', observation: '👁️'}[item.type] || '💭';
             const isRejection = item.type === 'rejection' || item.rejected;
@@ -1185,6 +1211,52 @@
         }
       } catch (error) {
         console.error('Error loading health status:', error);
+      }
+    }
+
+    async function loadROI() {
+      try {
+        const response = await fetch('/api/roi?format=dashboard');
+        const data = await response.json();
+        if (!data || !data.overall) return;
+
+        // Overall stats
+        const o = data.overall;
+        document.getElementById('roiOverall').innerHTML = `
+          <span>🎯 <strong>${o.shipped}</strong>/${o.total} shipped (${o.rate}%)</span>
+          <span>💭 <strong>${o.unique_thoughts}</strong> thought types</span>
+        `;
+
+        // Bar chart of top thoughts
+        const maxScore = data.top.length ? Math.max(...data.top.map(t => t.roi_score)) : 100;
+        document.getElementById('roiChart').innerHTML = data.top.map(t => {
+          const pct = Math.round((t.roi_score / maxScore) * 100);
+          const shipRate = t.total_entries > 0 ? Math.round(t.completion_rate) : 0;
+          return `<div style="display:flex; align-items:center; gap:0.5rem;">
+            <span style="width:120px; font-size:0.8rem; text-align:right; opacity:0.7; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${t.id}</span>
+            <div style="flex:1; height:18px; background:rgba(255,255,255,0.05); border-radius:4px; overflow:hidden; position:relative;">
+              <div style="height:100%; width:${pct}%; background:linear-gradient(90deg, var(--accent, #f59e0b), var(--accent-dim, #d97706)); border-radius:4px; transition:width 0.5s;"></div>
+              <span style="position:absolute; right:6px; top:1px; font-size:0.7rem; opacity:0.6;">${shipRate}% ship · ${t.total_entries}×</span>
+            </div>
+          </div>`;
+        }).join('');
+
+        // Time of day
+        const tod = data.time_of_day || {};
+        document.getElementById('roiTime').innerHTML = Object.entries(tod)
+          .sort((a, b) => b[1].rate - a[1].rate)
+          .map(([slot, d]) => `<div style="margin-bottom:0.3rem;">${slot}: <strong>${d.rate}%</strong> ship rate (${d.count} activities)</div>`)
+          .join('');
+
+        // Skills
+        const skills = data.skills || {};
+        document.getElementById('roiSkills').innerHTML = Object.entries(skills)
+          .slice(0, 6)
+          .map(([name, d]) => `<div style="margin-bottom:0.3rem;">${name}: ${d.used}× used, ${d.rate}% ship</div>`)
+          .join('') || '<span style="opacity:0.5;">No skills tracked yet</span>';
+
+      } catch (error) {
+        console.error('Error loading ROI:', error);
       }
     }
 

@@ -32,6 +32,51 @@ def load_history():
     with open(HISTORY_FILE) as f:
         return json.load(f)
 
+SHIP_KEYWORDS = [
+    'shipped', 'deployed', 'committed', 'pushed', 'merged', 'published',
+    'created', 'built', 'fixed', 'added', 'implemented', 'completed',
+    'installed', 'configured', 'wrote', 'designed', 'launched', 'released',
+    'posted', 'submitted', 'opened pr', 'pull request', 'refactored',
+]
+
+UNSHIP_KEYWORDS = [
+    'failed', 'couldn\'t', 'blocked', 'skipped', 'abandoned', 'gave up',
+    'no progress', 'deferred', 'nothing', 'explored but', 'just browsed',
+]
+
+def infer_shipped(entry):
+    """Smart inference: did this activity produce concrete output?"""
+    # Explicit flag always wins
+    if entry.get('shipped') is True:
+        return True
+    
+    summary = entry.get('summary', '').lower()
+    energy = entry.get('energy', 'neutral')
+    vibe = entry.get('vibe', 'neutral')
+    
+    # Check for negative signals first
+    for kw in UNSHIP_KEYWORDS:
+        if kw in summary:
+            return False
+    
+    # Check for positive signals
+    ship_signals = sum(1 for kw in SHIP_KEYWORDS if kw in summary)
+    
+    # High energy + positive vibe + ship keywords = shipped
+    if ship_signals >= 1 and energy == 'high' and vibe == 'positive':
+        return True
+    
+    # Multiple ship keywords even with neutral energy
+    if ship_signals >= 2:
+        return True
+    
+    # Single keyword with positive vibe
+    if ship_signals >= 1 and vibe == 'positive':
+        return True
+    
+    return entry.get('shipped', False)
+
+
 def calculate_roi_metrics(history):
     """Calculate ROI metrics from history data."""
     if not history:
@@ -50,7 +95,7 @@ def calculate_roi_metrics(history):
             continue
             
         total_entries = len(entries)
-        shipped_entries = [e for e in entries if e.get('shipped', False)]
+        shipped_entries = [e for e in entries if infer_shipped(e)]
         shipped_count = len(shipped_entries)
         
         # Calculate completion/shipping rate
@@ -181,10 +226,65 @@ def generate_summary(roi_data):
     
     return "\n".join(summary)
 
+def dashboard_summary(roi_data, history):
+    """Compact summary for dashboard consumption."""
+    if not roi_data:
+        return {'top': [], 'overall': {}, 'skills': {}}
+    
+    # Top 5 by ROI score
+    sorted_thoughts = sorted(roi_data.items(), key=lambda x: x[1]['roi_score'], reverse=True)
+    top = [{'id': t, **d} for t, d in sorted_thoughts[:8]]
+    
+    # Overall stats
+    total_shipped = sum(d['shipped_count'] for d in roi_data.values())
+    total_attempts = sum(d['total_entries'] for d in roi_data.values())
+    overall_rate = (total_shipped / total_attempts) * 100 if total_attempts > 0 else 0
+    
+    # Skills breakdown
+    skills_count = defaultdict(lambda: {'used': 0, 'shipped': 0})
+    for entry in history:
+        shipped = infer_shipped(entry)
+        for skill in entry.get('skills_used', []):
+            skills_count[skill]['used'] += 1
+            if shipped:
+                skills_count[skill]['shipped'] += 1
+    
+    skills = {k: {**v, 'rate': round(v['shipped']/v['used']*100, 1) if v['used'] > 0 else 0} 
+              for k, v in sorted(skills_count.items(), key=lambda x: -x[1]['used'])}
+    
+    # Time-of-day analysis
+    tod = defaultdict(lambda: {'count': 0, 'shipped': 0})
+    for entry in history:
+        try:
+            hour = datetime.fromisoformat(entry.get('timestamp', '').replace('Z', '+00:00')).hour
+            slot = 'night' if hour < 7 else 'morning' if hour < 12 else 'afternoon' if hour < 18 else 'evening'
+            tod[slot]['count'] += 1
+            if infer_shipped(entry):
+                tod[slot]['shipped'] += 1
+        except:
+            continue
+    
+    time_of_day = {k: {**v, 'rate': round(v['shipped']/v['count']*100, 1) if v['count'] > 0 else 0}
+                   for k, v in tod.items()}
+    
+    return {
+        'top': top,
+        'overall': {
+            'total': total_attempts,
+            'shipped': total_shipped,
+            'rate': round(overall_rate, 1),
+            'unique_thoughts': len(roi_data)
+        },
+        'skills': skills,
+        'time_of_day': time_of_day
+    }
+
+
 def main():
     """Main CLI entry point."""
     args = sys.argv[1:]
     json_only = '--json' in args
+    dashboard_mode = '--dashboard' in args
     
     # Load history
     history = load_history()
@@ -206,7 +306,9 @@ def main():
     with open(ROI_OUTPUT_FILE, 'w') as f:
         json.dump(output, f, indent=2)
     
-    if json_only:
+    if dashboard_mode:
+        print(json.dumps(dashboard_summary(roi_data, history), indent=2))
+    elif json_only:
         print(json.dumps(output, indent=2))
     else:
         summary = generate_summary(roi_data)
