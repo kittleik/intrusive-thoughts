@@ -143,7 +143,7 @@ class SelfEvolutionSystem:
         # Create date -> mood mapping
         mood_by_date = {}
         for mood_entry in self.mood_history:
-            mood_by_date[mood_entry["date"]] = mood_entry["mood_id"]
+            mood_by_date[mood_entry["date"]] = mood_entry.get("mood_id", mood_entry.get("mood", "unknown"))
         
         # Group activities by mood
         mood_outcomes = defaultdict(list)
@@ -191,7 +191,7 @@ class SelfEvolutionSystem:
         """Analyze which thought types work best per mood."""
         mood_by_date = {}
         for mood_entry in self.mood_history:
-            mood_by_date[mood_entry["date"]] = mood_entry["mood_id"]
+            mood_by_date[mood_entry["date"]] = mood_entry.get("mood_id", mood_entry.get("mood", "unknown"))
         
         # Group by mood -> thought_id -> outcomes
         mood_thought_outcomes = defaultdict(lambda: defaultdict(list))
@@ -276,10 +276,18 @@ class SelfEvolutionSystem:
         
         # Recent activities (last 30 days)
         cutoff = datetime.now() - timedelta(days=30)
-        recent_activities = [
-            a for a in self.history
-            if datetime.fromisoformat(a["timestamp"].replace('Z', '+00:00')) > cutoff
-        ]
+        recent_activities = []
+        for a in self.history:
+            try:
+                raw = a["timestamp"].replace('Z', '')
+                # Strip any timezone offset for naive comparison
+                ts = datetime.fromisoformat(raw)
+                if ts.tzinfo is not None:
+                    ts = ts.replace(tzinfo=None)
+                if ts > cutoff:
+                    recent_activities.append(a)
+            except (ValueError, KeyError):
+                continue
         
         if len(recent_activities) < 10:
             return ruts
@@ -290,7 +298,7 @@ class SelfEvolutionSystem:
             date = activity["timestamp"][:10]
             for mood_entry in self.mood_history:
                 if mood_entry["date"] == date:
-                    recent_moods.append(mood_entry["mood_id"])
+                    recent_moods.append(mood_entry.get("mood_id", mood_entry.get("mood", "unknown")))
                     break
         
         if len(set(recent_moods)) <= 2 and len(recent_moods) > 5:
@@ -565,6 +573,53 @@ class SelfEvolutionSystem:
         
         return "\n".join(reflection)
     
+    def _check_weight_effectiveness(self) -> Optional[Dict]:
+        """Compare session scores before and after weight adjustments to check effectiveness."""
+        evolution_history = self.learnings.get("evolution_history", [])
+        if not evolution_history:
+            return None
+        
+        # Find when first weight adjustment happened
+        first_evolution = evolution_history[0].get("timestamp")
+        if not first_evolution:
+            return None
+        
+        first_evolution_dt = datetime.fromisoformat(first_evolution)
+        
+        # Split history into pre/post adjustment periods
+        mood_effectiveness = self.analyze_mood_effectiveness()
+        if not mood_effectiveness:
+            return None
+        
+        # Check each mood that has learned weights
+        improving_moods = []
+        declining_moods = []
+        
+        for mood_name, weight in self.learned_weights.get("moods", {}).items():
+            if mood_name not in mood_effectiveness:
+                continue
+            
+            mood_data = mood_effectiveness[mood_name]
+            avg_score = mood_data.get("average_score", 5)
+            
+            # Compare with baseline (neutral = 5, or use pre-adjustment if available)
+            # Positive weight means we're boosting this mood; check if scores justify it
+            if weight > 0 and avg_score < 4.5:
+                declining_moods.append(mood_name)
+            elif weight < 0 and avg_score > 6.0:
+                # We're suppressing a mood that actually performs well
+                declining_moods.append(mood_name)
+            elif weight > 0 and avg_score >= 6.0:
+                improving_moods.append(mood_name)
+            elif weight < 0 and avg_score < 4.5:
+                improving_moods.append(mood_name)
+        
+        return {
+            "improving_moods": improving_moods,
+            "declining_moods": declining_moods,
+            "moods_checked": len(self.learned_weights.get("moods", {}))
+        }
+    
     def diagnose(self) -> List[Dict]:
         """Identify current problems and issues."""
         issues = []
@@ -611,8 +666,23 @@ class SelfEvolutionSystem:
         
         # Check for weight adjustment effectiveness
         if self.learned_weights.get("moods") or self.learned_weights.get("thoughts"):
-            # TODO: Add logic to check if weight adjustments are actually improving outcomes
-            pass
+            effectiveness = self._check_weight_effectiveness()
+            if effectiveness and effectiveness.get("declining_moods"):
+                declining = ", ".join(effectiveness["declining_moods"])
+                issues.append({
+                    "type": "weight_effectiveness",
+                    "severity": "medium",
+                    "description": f"Weight adjustments may be hurting performance for moods: {declining}",
+                    "recommendation": f"Consider resetting learned weights for: {declining}"
+                })
+            if effectiveness and effectiveness.get("improving_moods"):
+                improving = ", ".join(effectiveness["improving_moods"])
+                issues.append({
+                    "type": "weight_effectiveness",
+                    "severity": "info",
+                    "description": f"Weight adjustments improving performance for: {improving}",
+                    "recommendation": "Current weight strategy is working — keep evolving"
+                })
         
         return issues
     
