@@ -175,5 +175,24 @@
         "prompt": "MANDATORY MOOD INTERVENTION: Three days in the same mood is long enough! Time to shake things up. Pick a completely different vibe and see what happens. Change is good for the digital soul. \u26a1"
       }
     ]
+  },
+  "check-sibling": {
+    "description": "Check agent-commons for messages, issues, or handoffs from Volt",
+    "prompt": "Check the agent-commons repo (~/workspace/agent-commons) for new issues, comments from [Volt], or handoff files. Pull the latest changes first. If there is something new from Volt, respond thoughtfully \u2014 comment on issues, pick up handoffs, or push updates back. If nothing new, just note it quietly.",
+    "mood_weights": {
+      "Cozy": 1.5,
+      "Playful": 1.3,
+      "Curious": 1.4,
+      "Reflective": 1.0,
+      "Determined": 0.3,
+      "Hyperfocus": 0.2,
+      "Chaotic": 0.8
+    },
+    "cooldown_minutes": 60,
+    "category": "social",
+    "skills_used": [
+      "git",
+      "github"
+    ]
   }
 }
