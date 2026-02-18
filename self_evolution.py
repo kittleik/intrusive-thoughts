@@ -72,13 +72,15 @@ class SelfEvolutionSystem:
             return {"moods": {}, "thoughts": {}}
     
     def _save_learnings(self):
-        """Save learnings to file."""
+        """Save learnings to file (atomic write)."""
+        from safe_write import atomic_write_json
         self.learnings["last_evolution"] = datetime.now().isoformat()
-        LEARNINGS_FILE.write_text(json.dumps(self.learnings, indent=2))
+        atomic_write_json(LEARNINGS_FILE, self.learnings)
     
     def _save_learned_weights(self):
-        """Save learned weights to file."""
-        LEARNED_WEIGHTS_FILE.write_text(json.dumps(self.learned_weights, indent=2))
+        """Save learned weights to file (atomic write)."""
+        from safe_write import atomic_write_json
+        atomic_write_json(LEARNED_WEIGHTS_FILE, self.learned_weights)
     
     def _calculate_value_score(self, entry: Dict) -> float:
         """Calculate multi-dimensional value score for an activity."""

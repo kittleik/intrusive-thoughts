@@ -107,7 +107,8 @@ def main():
         "generated_at": datetime.now().isoformat()
     }
     
-    SCHEDULE_FILE.write_text(json.dumps(schedule, indent=2))
+    from safe_write import atomic_write_json
+    atomic_write_json(SCHEDULE_FILE, schedule)
     
     print(json.dumps(schedule, indent=2))
 

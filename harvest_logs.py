@@ -47,7 +47,8 @@ def load_harvest_state():
         return {"last_harvest_ms": 0, "harvested_sessions": []}
 
 def save_harvest_state(state):
-    HARVEST_STATE_FILE.write_text(json.dumps(state, indent=2))
+    from safe_write import atomic_write_json
+    atomic_write_json(HARVEST_STATE_FILE, state)
 
 def load_history():
     try:
@@ -57,7 +58,8 @@ def load_history():
         return []
 
 def save_history(history):
-    HISTORY_FILE.write_text(json.dumps(history, indent=2))
+    from safe_write import atomic_write_json
+    atomic_write_json(HISTORY_FILE, history)
 
 def extract_session_data(session_path):
     """Extract activity data from a session log file."""

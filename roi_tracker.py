@@ -303,8 +303,8 @@ def main():
         'roi_data': roi_data
     }
     
-    with open(ROI_OUTPUT_FILE, 'w') as f:
-        json.dump(output, f, indent=2)
+    from safe_write import atomic_write_json
+    atomic_write_json(ROI_OUTPUT_FILE, output)
     
     if dashboard_mode:
         print(json.dumps(dashboard_summary(roi_data, history), indent=2))

@@ -50,9 +50,9 @@ class TrustSystem:
             self.save_data()
     
     def save_data(self):
-        """Save trust data to JSON file"""
-        with open(self.data_file, 'w') as f:
-            json.dump(self.data, f, indent=2)
+        """Save trust data to JSON file (atomic write)"""
+        from safe_write import atomic_write_json
+        atomic_write_json(self.data_file, self.data)
     
     def get_current_mood(self) -> Dict[str, Any]:
         """Get current mood from mood system for risk tolerance adjustment"""

@@ -27,8 +27,9 @@ def load_earned():
         return {"version": 1, "earned": [], "total_points": 0}
 
 def save_earned(data):
-    """Save earned achievements."""
-    EARNED_FILE.write_text(json.dumps(data, indent=2))
+    """Save earned achievements (atomic write)."""
+    from safe_write import atomic_write_json
+    atomic_write_json(EARNED_FILE, data)
 
 def load_history():
     """Load activity history."""

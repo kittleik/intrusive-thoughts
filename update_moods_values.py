@@ -30,9 +30,9 @@ def update_moods_with_values():
         if mood_id in value_texts:
             mood["value_text"] = value_texts[mood_id]
     
-    # Write updated moods back
-    with open(moods_file, 'w') as f:
-        json.dump(moods_data, f, indent=2, ensure_ascii=False)
+    # Write updated moods back (atomic write)
+    from safe_write import atomic_write_json
+    atomic_write_json(moods_file, moods_data)
     
     print("Updated moods.json with value_text fields")
 

@@ -170,9 +170,9 @@ def main():
     night_summary = analyze_night_sessions(history, target_date)
     
     # Write summary to file
+    from safe_write import atomic_write_json
     output_file = script_dir / "night_summary.json"
-    with open(output_file, "w") as f:
-        json.dump(night_summary, f, indent=2)
+    atomic_write_json(output_file, night_summary)
     
     print(f"📊 Night Summary for {target_date.isoformat()}:", file=sys.stderr)
     print(f"   Sessions: {night_summary['sessions']}", file=sys.stderr)

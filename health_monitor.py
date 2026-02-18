@@ -51,7 +51,8 @@ def _load_json(path, default=None):
 
 def _save_json(path, data):
     _ensure_dirs()
-    path.write_text(json.dumps(data, indent=2, default=str))
+    from safe_write import atomic_write_json
+    atomic_write_json(path, data)
 
 
 # ---------------------------------------------------------------------------

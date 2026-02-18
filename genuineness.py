@@ -87,9 +87,9 @@ def load_genuineness_data() -> dict:
         return json.load(f)
 
 def save_genuineness_data(data: dict):
-    """Save genuineness tracking data."""
-    with open(GENUINENESS_DATA, "w") as f:
-        json.dump(data, f, indent=2)
+    """Save genuineness tracking data (atomic write)."""
+    from safe_write import atomic_write_json
+    atomic_write_json(GENUINENESS_DATA, data)
 
 def load_moods() -> dict:
     """Load mood definitions."""

@@ -121,9 +121,9 @@ def save_human_mood(mood_data):
         data["history"].append(mood_data)
         data["history"] = data["history"][-50:]  # Keep last 50
         
-        # Save
-        with open(HUMAN_MOOD_FILE, 'w') as f:
-            json.dump(data, f, indent=2)
+        # Save (atomic write)
+        from safe_write import atomic_write_json
+        atomic_write_json(HUMAN_MOOD_FILE, data)
             
     except Exception as e:
         print(f"Failed to save human mood: {e}")

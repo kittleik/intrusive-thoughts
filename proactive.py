@@ -64,9 +64,9 @@ class ProactiveAgent:
             return {"active_items": [], "completed": [], "expired": []}
             
     def _save_buffer(self, buffer_data: Dict) -> None:
-        """Save working buffer"""
-        with open(self.buffer_file, 'w') as f:
-            json.dump(buffer_data, f, indent=2)
+        """Save working buffer (atomic write)"""
+        from safe_write import atomic_write_json
+        atomic_write_json(self.buffer_file, buffer_data)
             
     def wal_log(self, type_: str, category: str, content: str, mood: str, 
                 outcome: str = "pending", energy_cost: float = 0.0, 
