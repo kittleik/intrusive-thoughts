@@ -33,6 +33,8 @@ TIMESTAMP=$(date -Iseconds)
 python3 << PYEOF
 import json, sys
 from datetime import datetime, timedelta
+sys.path.insert(0, '$DATA_DIR')
+from safe_write import atomic_write_json
 
 # Log to history
 try:
@@ -73,8 +75,7 @@ if is_duplicate:
 history.append(entry)
 history = history[-500:]
 
-with open('$HISTORY_FILE', 'w') as f:
-    json.dump(history, f, indent=2)
+atomic_write_json('$HISTORY_FILE', history)
 
 # Drift today's mood based on outcome
 try:
@@ -152,8 +153,7 @@ if today:
             today['drifted_to'] = 'social'
             today['drift_note'] = 'Good vibes — feeling chatty'
     
-    with open('$MOOD_FILE', 'w') as f:
-        json.dump(today, f, indent=2)
+    atomic_write_json('$MOOD_FILE', today)
     
     drift_info = today.get('drifted_to', '')
     if drift_info:
@@ -170,6 +170,11 @@ streaks_file = '$DATA_DIR/streaks.json'
 try:
     with open(streaks_file) as f:
         streaks = json.load(f)
+    # Migrate old format: ensure required keys exist
+    streaks.setdefault('recent_activities', [])
+    streaks.setdefault('current_streaks', {'activity_type': [], 'mood': [], 'time_slot': []})
+    streaks.setdefault('anti_rut_weights', {})
+    streaks.setdefault('streak_history', [])
 except:
     streaks = {
         'version': 1,
@@ -248,9 +253,8 @@ for thought_id in ['build-tool', 'upgrade-project', 'moltbook-post', 'creative-c
 
 streaks['anti_rut_weights'] = weights
 
-# Save streaks
-with open(streaks_file, 'w') as f:
-    json.dump(streaks, f, indent=2)
+# Save streaks (atomic write — crash-safe)
+atomic_write_json(streaks_file, streaks)
 
 # Check for achievements (if the script exists)
 import subprocess
