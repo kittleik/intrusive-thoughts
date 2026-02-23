@@ -628,58 +628,36 @@ print('__DECISION_TRACE__:' + json.dumps(decision_trace))
 FULL_OUTPUT=$(cat "$TEMP_OUTPUT")
 rm -f "$TEMP_OUTPUT"
 
-# Debug: Check what we captured  
-echo "DEBUG: FULL_OUTPUT length: ${#FULL_OUTPUT}" >&2
-echo "DEBUG: First line of FULL_OUTPUT: $(echo "$FULL_OUTPUT" | head -1)" >&2
-echo "DEBUG: Lines containing '__': $(echo "$FULL_OUTPUT" | grep "__" | wc -l)" >&2
-
 # Process the output - extract rejections, decision trace, and main prompt
 REJECTIONS_LINE=$(echo "$FULL_OUTPUT" | grep "^__REJECTIONS__:" | head -1)
-DECISION_TRACE_LINE=$(echo "$FULL_OUTPUT" | grep "^__DECISION_TRACE__:" | head -1)  
+DECISION_TRACE_LINE=$(echo "$FULL_OUTPUT" | grep "^__DECISION_TRACE__:" | head -1)
 MAIN_PROMPT=$(echo "$FULL_OUTPUT" | grep "^{" | head -1)
-
-echo "DEBUG: REJECTIONS_LINE length: ${#REJECTIONS_LINE}" >&2
-echo "DEBUG: DECISION_TRACE_LINE length: ${#DECISION_TRACE_LINE}" >&2
-echo "DEBUG: REJECTIONS_LINE: ${REJECTIONS_LINE:0:100}..." >&2
 
 echo "$MAIN_PROMPT"
 
 # Log rejections to rejections.log
-echo "DEBUG: About to process rejections, REJECTIONS_LINE='$REJECTIONS_LINE'" >&2
 if [[ -n "$REJECTIONS_LINE" ]]; then
     REJECTIONS_JSON="${REJECTIONS_LINE#__REJECTIONS__:}"
-    echo "DEBUG: REJECTIONS_JSON='$REJECTIONS_JSON'" >&2
     if [[ "$REJECTIONS_JSON" != "[]" ]]; then
-        echo "DEBUG: Found rejections to log" >&2
         echo "$REJECTIONS_JSON" | python3 -c "
 import json, sys
 rejections = json.load(sys.stdin)
 for rej in rejections:
     print(f\"{rej['timestamp']} | {rej['thought_id']} | {rej['mood']} | {rej['reason']} | {rej['flavor_text']}\")
 " >> "$LOG_DIR/rejections.log"
-    else
-        echo "DEBUG: No rejections to log (empty array)" >&2
     fi
-else
-    echo "DEBUG: REJECTIONS_LINE is empty" >&2
 fi
 
 # Log decision trace to decisions.json (append to array)
-echo "DEBUG: About to process decision trace, DECISION_TRACE_LINE length: ${#DECISION_TRACE_LINE}" >&2
 if [[ -n "$DECISION_TRACE_LINE" ]]; then
     DECISION_JSON="${DECISION_TRACE_LINE#__DECISION_TRACE__:}"
-    echo "DEBUG: Extracted DECISION_JSON, length: ${#DECISION_JSON}" >&2
-    
+
     # Create decisions.json if it doesn't exist
     if [[ ! -f "$LOG_DIR/decisions.json" ]]; then
-        echo "DEBUG: Creating new decisions.json" >&2
         echo "[]" > "$LOG_DIR/decisions.json"
-    else
-        echo "DEBUG: Using existing decisions.json" >&2
     fi
-    
+
     # Append to the JSON array - pass JSON via stdin to avoid shell escaping issues
-    echo "DEBUG: About to append decision to JSON file" >&2
     echo "$DECISION_JSON" | python3 -c "
 import json, sys
 import os
@@ -696,18 +674,16 @@ try:
 
     decisions.append(decision)
 
-    # Keep only last 100 entries to prevent file from growing too large  
+    # Keep only last 100 entries to prevent file from growing too large
     decisions = decisions[-100:]
 
     with open(decisions_file, 'w') as f:
         json.dump(decisions, f, indent=2)
-    
+
     print('SUCCESS: Decision logged', file=sys.stderr)
 except Exception as e:
     print(f'ERROR logging decision: {e}', file=sys.stderr)
 "
-else
-    echo "DEBUG: DECISION_TRACE_LINE is empty" >&2
 fi
 
 # Log the pick (existing functionality)

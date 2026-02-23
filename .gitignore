@@ -39,3 +39,10 @@ buffer/
 log/
 night_summary.json
 mood_patterns.md
+
+# Runtime state files (accumulate during operation, not config)
+genuineness_data.json
+harvest_state.json
+moltbook_status.json
+active_override.json
+memory/
