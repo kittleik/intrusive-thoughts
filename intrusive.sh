@@ -529,8 +529,9 @@ for t in mood_data['thoughts']:
         boosted = focus_data.get('boost_thoughts', [])
         if thought_id in boosted:
             factor = focus_data.get('boost_factor', 2.0)
+            focus_label = str(focus_data.get('focus', 'active'))[:30]
             weight *= factor
-            boost_reasons.append(f'Focus boost ({focus_data.get("focus","?")}): {factor}x')
+            boost_reasons.append(f'Focus boost ({focus_label}): {factor}x')
     except:
         pass
 
