@@ -336,6 +336,16 @@ mkdir -p "$LOG_DIR"
 
 MOOD="${1:-day}"
 
+# Active session suppression: skip daytime pop-ins if user is in conversation
+if [[ "$MOOD" == "day" ]]; then
+    LAST_ACTIVE=$(cat ~/.openclaw/agents/main/last_active 2>/dev/null || echo "0")
+    NOW_EPOCH=$(date +%s)
+    if [[ $((NOW_EPOCH - LAST_ACTIVE)) -lt 600 ]]; then
+        echo '{"id":"suppressed","prompt":"","jitter_seconds":0,"timeout_seconds":0,"mood":"day","suppressed":true,"reason":"main session active"}'
+        exit 0
+    fi
+fi
+
 # Min-interval guard: skip if last pick was less than 30 seconds ago
 DECISIONS_FILE="$LOG_DIR/decisions.json"
 if [[ -f "$DECISIONS_FILE" ]]; then
@@ -500,6 +510,30 @@ for t in mood_data['thoughts']:
             weight *= 1.3  # Amplify good vibes
             boost_reasons.append(f'Boosted to amplify good vibes')
     
+    # Apply active context boost (from inject_context.py)
+    try:
+        with open('$SCRIPT_DIR/active_context.json') as f:
+            active_ctx = json.load(f)
+        hot = active_ctx.get('hot_projects', [])
+        suggested = active_ctx.get('suggested_thoughts', [])
+        if hot and thought_id in suggested:
+            weight *= 1.5
+            boost_reasons.append(f'Context boost: hot projects {hot} suggest {thought_id}')
+    except:
+        pass
+
+    # Apply manual focus boost (from set_focus.sh / focus.json)
+    try:
+        with open('$SCRIPT_DIR/focus.json') as f:
+            focus_data = json.load(f)
+        boosted = focus_data.get('boost_thoughts', [])
+        if thought_id in boosted:
+            factor = focus_data.get('boost_factor', 2.0)
+            weight *= factor
+            boost_reasons.append(f'Focus boost ({focus_data.get("focus","?")}): {factor}x')
+    except:
+        pass
+
     # Track candidate with full details
     candidate = {
         'id': thought_id,
@@ -635,16 +669,41 @@ MAIN_PROMPT=$(echo "$FULL_OUTPUT" | grep "^{" | head -1)
 
 echo "$MAIN_PROMPT"
 
-# Log rejections to rejections.log
+# Log rejections to rejections.log (deduplicated: same thought+reason only once per day)
 if [[ -n "$REJECTIONS_LINE" ]]; then
     REJECTIONS_JSON="${REJECTIONS_LINE#__REJECTIONS__:}"
     if [[ "$REJECTIONS_JSON" != "[]" ]]; then
         echo "$REJECTIONS_JSON" | python3 -c "
-import json, sys
+import json, sys, os, re
+from datetime import datetime
+
 rejections = json.load(sys.stdin)
+log_file = '$LOG_DIR/rejections.log'
+today = datetime.now().strftime('%Y-%m-%d')
+
+# Read today's already-logged (thought_id, reason_key) pairs to deduplicate
+seen_today = set()
+if os.path.exists(log_file):
+    with open(log_file) as f:
+        for line in f:
+            if line.startswith(today):
+                parts = line.split(' | ')
+                if len(parts) >= 4:
+                    # key = thought_id + first 40 chars of reason
+                    seen_today.add((parts[1].strip(), parts[3].strip()[:40]))
+
+new_lines = []
 for rej in rejections:
-    print(f\"{rej['timestamp']} | {rej['thought_id']} | {rej['mood']} | {rej['reason']} | {rej['flavor_text']}\")
-" >> "$LOG_DIR/rejections.log"
+    reason_key = rej['reason'][:40]
+    key = (rej['thought_id'], reason_key)
+    if key not in seen_today:
+        seen_today.add(key)
+        new_lines.append(f\"{rej['timestamp']} | {rej['thought_id']} | {rej['mood']} | {rej['reason']} | {rej['flavor_text']}\")
+
+if new_lines:
+    with open(log_file, 'a') as f:
+        f.write('\n'.join(new_lines) + '\n')
+" 2>/dev/null
     fi
 fi
 

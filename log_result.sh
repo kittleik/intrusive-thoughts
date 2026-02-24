@@ -28,6 +28,32 @@ MOOD="${ARGS[1]:-unknown}"
 SUMMARY="${ARGS[2]:-No summary provided}"
 ENERGY="${ARGS[3]:-neutral}"
 VIBE="${ARGS[4]:-neutral}"
+
+# Auto-detect if something was shipped (runs before the Python block)
+AUTO_SHIPPED=false
+
+# Check 1: New git commits in last 2 hours in key project dirs
+for REPO in ~/Projects/cauldron-tui ~/Projects/intrusive-thoughts ~/Projects/libriften ~/Projects/cauldron-beta ~/Projects/newsroom; do
+  if [[ -d "$REPO/.git" ]]; then
+    RECENT=$(git -C "$REPO" log --oneline --since="2 hours ago" 2>/dev/null | wc -l)
+    if [[ "$RECENT" -gt 0 ]]; then AUTO_SHIPPED=true; break; fi
+  fi
+done
+
+# Check 2: New SKILL.md files in last 2 hours
+if [[ "$AUTO_SHIPPED" == "false" ]] && find ~/.openclaw/skills -name "SKILL.md" -newer ~/.openclaw/skills -maxdepth 2 2>/dev/null | grep -q .; then
+  AUTO_SHIPPED=true
+fi
+
+# Check 3: New scripts in ~/.openclaw/scripts in last 2 hours
+if [[ "$AUTO_SHIPPED" == "false" ]] && find ~/.openclaw/scripts -newer ~/.openclaw/scripts -maxdepth 1 2>/dev/null | grep -q .; then
+  AUTO_SHIPPED=true
+fi
+
+# Merge auto-detection with explicit --shipped flag
+if [[ "$AUTO_SHIPPED" == "true" ]]; then
+  SHIPPED=true
+fi
 TIMESTAMP=$(date -Iseconds)
 
 python3 << PYEOF

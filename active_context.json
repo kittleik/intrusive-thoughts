@@ -1,0 +1,15 @@
+{
+  "updated": "2026-02-24T15:02:56.611200",
+  "open_items": [
+    "cauldron-tui: issue #17 \u2014 SIGHASH_UTXOS preimage mismatch for token P2PKH inputs",
+    "cauldron-tui: \u274c blocked by issue #17 \u2014 SIGHASH_UTXOS preimage mismatch for token P2PKH inputs.",
+    "cauldron-tui: blocked by issue #17 \u2014 SIGHASH_UTXOS preimage mismatch for token P2PKH inputs."
+  ],
+  "hot_projects": [
+    "cauldron-tui"
+  ],
+  "suggested_thoughts": [
+    "upgrade-project",
+    "build-tool"
+  ]
+}

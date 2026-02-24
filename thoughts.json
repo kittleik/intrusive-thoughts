@@ -3,18 +3,18 @@
   "moods": {
     "night": {
       "description": "Deep work while your human sleeps. No messaging them.",
-      "jitter_seconds": 1800,
+      "jitter_seconds": 600,
       "timeout_seconds": 900,
       "thoughts": [
         {
           "id": "build-tool",
           "weight": 3,
-          "prompt": "Build a small, useful tool or script. Something that solves a real problem \u2014 for yourself, for your human, or just for fun. Save it somewhere sensible and log what you made."
+          "prompt": "Build something useful while your human sleeps. Check ~/Projects/ for silent friction points \u2014 things that are annoying to do manually. Build the fix. Commit it. When done: bash ~/Projects/intrusive-thoughts/log_result.sh build-tool night \"<what you built>\" high positive --shipped"
         },
         {
           "id": "upgrade-project",
           "weight": 3,
-          "prompt": "Pick a project in ~/Projects and improve it. Fix a bug, add a feature, clean up code, improve docs. Commit your changes."
+          "prompt": "Check MEMORY.md for active projects. Find something close to done or worth improving. Read HANDOFF.md in project roots. Fix something real. Commit. When done: bash ~/Projects/intrusive-thoughts/log_result.sh upgrade-project night \"<what you improved>\" high positive --shipped"
         },
         {
           "id": "install-explore",
@@ -38,8 +38,8 @@
         },
         {
           "id": "memory-review",
-          "weight": 1,
-          "prompt": "Review your memory files. Read through recent daily notes, update MEMORY.md with anything worth keeping long-term. Clean up outdated stuff. Reflect."
+          "weight": 2,
+          "prompt": "Review your memory. Read today_mood.json activity_log, history.json recent entries, and MEMORY.md. Identify anything worth updating in MEMORY.md \u2014 new lessons, resolved items, project status changes. Write the updates. When done: bash ~/Projects/intrusive-thoughts/log_result.sh memory-review night \"Updated MEMORY.md: <what changed>\" neutral positive --shipped"
         },
         {
           "id": "creative-chaos",
@@ -48,8 +48,8 @@
         },
         {
           "id": "create-skill",
-          "prompt": "Explore a tool, workflow, or technique you've used recently. Package it as a reusable OpenClaw skill at ~/.openclaw/skills/<name>/SKILL.md. Include practical commands, gotchas, and examples. If you find an interesting CLI tool, install it first, learn it, then write the skill. Log what you created.",
-          "weight": 15,
+          "prompt": "Package a workflow you have genuinely used recently as a reusable OpenClaw skill. Only create it if the workflow is real and repeatable. Add it to ~/.openclaw/skills/<name>/SKILL.md. When done: bash ~/Projects/intrusive-thoughts/log_result.sh create-skill night \"<name> skill\" high positive --shipped",
+          "weight": 4,
           "energy": "high",
           "tags": [
             "build",
@@ -111,8 +111,8 @@
         },
         {
           "id": "create-skill",
-          "prompt": "Explore a tool, workflow, or technique you've used recently. Package it as a reusable OpenClaw skill at ~/.openclaw/skills/<name>/SKILL.md. Include practical commands, gotchas, and examples. If you find an interesting CLI tool, install it first, learn it, then write the skill. Log what you created.",
-          "weight": 5,
+          "prompt": "Explore a tool, workflow, or technique you have genuinely used recently. Package it as a reusable OpenClaw skill at ~/.openclaw/skills/<name>/SKILL.md. Only do this if you have a REAL workflow to capture \u2014 not a made-up one. Include practical commands, gotchas, examples. When done: bash ~/Projects/intrusive-thoughts/log_result.sh create-skill day \"<name> skill\" high positive --shipped",
+          "weight": 3,
           "energy": "high",
           "tags": [
             "build",
