@@ -336,6 +336,16 @@ mkdir -p "$LOG_DIR"
 
 MOOD="${1:-day}"
 
+# Active session suppression: skip daytime pop-ins if user is in conversation
+if [[ "$MOOD" == "day" ]]; then
+    LAST_ACTIVE=$(cat ~/.openclaw/agents/main/last_active 2>/dev/null || echo "0")
+    NOW_EPOCH=$(date +%s)
+    if [[ $((NOW_EPOCH - LAST_ACTIVE)) -lt 600 ]]; then
+        echo '{"id":"suppressed","prompt":"","jitter_seconds":0,"timeout_seconds":0,"mood":"day","suppressed":true,"reason":"main session active"}'
+        exit 0
+    fi
+fi
+
 # Min-interval guard: skip if last pick was less than 30 seconds ago
 DECISIONS_FILE="$LOG_DIR/decisions.json"
 if [[ -f "$DECISIONS_FILE" ]]; then
@@ -500,6 +510,31 @@ for t in mood_data['thoughts']:
             weight *= 1.3  # Amplify good vibes
             boost_reasons.append(f'Boosted to amplify good vibes')
     
+    # Apply active context boost (from inject_context.py)
+    try:
+        with open('$SCRIPT_DIR/active_context.json') as f:
+            active_ctx = json.load(f)
+        hot = active_ctx.get('hot_projects', [])
+        suggested = active_ctx.get('suggested_thoughts', [])
+        if hot and thought_id in suggested:
+            weight *= 1.5
+            boost_reasons.append(f'Context boost: hot projects {hot} suggest {thought_id}')
+    except:
+        pass
+
+    # Apply manual focus boost (from set_focus.sh / focus.json)
+    try:
+        with open('$SCRIPT_DIR/focus.json') as f:
+            focus_data = json.load(f)
+        boosted = focus_data.get('boost_thoughts', [])
+        if thought_id in boosted:
+            factor = focus_data.get('boost_factor', 2.0)
+            focus_label = str(focus_data.get('focus', 'active'))[:30]
+            weight *= factor
+            boost_reasons.append(f'Focus boost ({focus_label}): {factor}x')
+    except:
+        pass
+
     # Track candidate with full details
     candidate = {
         'id': thought_id,
@@ -628,58 +663,61 @@ print('__DECISION_TRACE__:' + json.dumps(decision_trace))
 FULL_OUTPUT=$(cat "$TEMP_OUTPUT")
 rm -f "$TEMP_OUTPUT"
 
-# Debug: Check what we captured  
-echo "DEBUG: FULL_OUTPUT length: ${#FULL_OUTPUT}" >&2
-echo "DEBUG: First line of FULL_OUTPUT: $(echo "$FULL_OUTPUT" | head -1)" >&2
-echo "DEBUG: Lines containing '__': $(echo "$FULL_OUTPUT" | grep "__" | wc -l)" >&2
-
 # Process the output - extract rejections, decision trace, and main prompt
 REJECTIONS_LINE=$(echo "$FULL_OUTPUT" | grep "^__REJECTIONS__:" | head -1)
-DECISION_TRACE_LINE=$(echo "$FULL_OUTPUT" | grep "^__DECISION_TRACE__:" | head -1)  
+DECISION_TRACE_LINE=$(echo "$FULL_OUTPUT" | grep "^__DECISION_TRACE__:" | head -1)
 MAIN_PROMPT=$(echo "$FULL_OUTPUT" | grep "^{" | head -1)
-
-echo "DEBUG: REJECTIONS_LINE length: ${#REJECTIONS_LINE}" >&2
-echo "DEBUG: DECISION_TRACE_LINE length: ${#DECISION_TRACE_LINE}" >&2
-echo "DEBUG: REJECTIONS_LINE: ${REJECTIONS_LINE:0:100}..." >&2
 
 echo "$MAIN_PROMPT"
 
-# Log rejections to rejections.log
-echo "DEBUG: About to process rejections, REJECTIONS_LINE='$REJECTIONS_LINE'" >&2
+# Log rejections to rejections.log (deduplicated: same thought+reason only once per day)
 if [[ -n "$REJECTIONS_LINE" ]]; then
     REJECTIONS_JSON="${REJECTIONS_LINE#__REJECTIONS__:}"
-    echo "DEBUG: REJECTIONS_JSON='$REJECTIONS_JSON'" >&2
     if [[ "$REJECTIONS_JSON" != "[]" ]]; then
-        echo "DEBUG: Found rejections to log" >&2
         echo "$REJECTIONS_JSON" | python3 -c "
-import json, sys
+import json, sys, os, re
+from datetime import datetime
+
 rejections = json.load(sys.stdin)
+log_file = '$LOG_DIR/rejections.log'
+today = datetime.now().strftime('%Y-%m-%d')
+
+# Read today's already-logged (thought_id, reason_key) pairs to deduplicate
+seen_today = set()
+if os.path.exists(log_file):
+    with open(log_file) as f:
+        for line in f:
+            if line.startswith(today):
+                parts = line.split(' | ')
+                if len(parts) >= 4:
+                    # key = thought_id + first 40 chars of reason
+                    seen_today.add((parts[1].strip(), parts[3].strip()[:40]))
+
+new_lines = []
 for rej in rejections:
-    print(f\"{rej['timestamp']} | {rej['thought_id']} | {rej['mood']} | {rej['reason']} | {rej['flavor_text']}\")
-" >> "$LOG_DIR/rejections.log"
-    else
-        echo "DEBUG: No rejections to log (empty array)" >&2
+    reason_key = rej['reason'][:40]
+    key = (rej['thought_id'], reason_key)
+    if key not in seen_today:
+        seen_today.add(key)
+        new_lines.append(f\"{rej['timestamp']} | {rej['thought_id']} | {rej['mood']} | {rej['reason']} | {rej['flavor_text']}\")
+
+if new_lines:
+    with open(log_file, 'a') as f:
+        f.write('\n'.join(new_lines) + '\n')
+" 2>/dev/null
     fi
-else
-    echo "DEBUG: REJECTIONS_LINE is empty" >&2
 fi
 
 # Log decision trace to decisions.json (append to array)
-echo "DEBUG: About to process decision trace, DECISION_TRACE_LINE length: ${#DECISION_TRACE_LINE}" >&2
 if [[ -n "$DECISION_TRACE_LINE" ]]; then
     DECISION_JSON="${DECISION_TRACE_LINE#__DECISION_TRACE__:}"
-    echo "DEBUG: Extracted DECISION_JSON, length: ${#DECISION_JSON}" >&2
-    
+
     # Create decisions.json if it doesn't exist
     if [[ ! -f "$LOG_DIR/decisions.json" ]]; then
-        echo "DEBUG: Creating new decisions.json" >&2
         echo "[]" > "$LOG_DIR/decisions.json"
-    else
-        echo "DEBUG: Using existing decisions.json" >&2
     fi
-    
+
     # Append to the JSON array - pass JSON via stdin to avoid shell escaping issues
-    echo "DEBUG: About to append decision to JSON file" >&2
     echo "$DECISION_JSON" | python3 -c "
 import json, sys
 import os
@@ -696,18 +734,16 @@ try:
 
     decisions.append(decision)
 
-    # Keep only last 100 entries to prevent file from growing too large  
+    # Keep only last 100 entries to prevent file from growing too large
     decisions = decisions[-100:]
 
     with open(decisions_file, 'w') as f:
         json.dump(decisions, f, indent=2)
-    
+
     print('SUCCESS: Decision logged', file=sys.stderr)
 except Exception as e:
     print(f'ERROR logging decision: {e}', file=sys.stderr)
 "
-else
-    echo "DEBUG: DECISION_TRACE_LINE is empty" >&2
 fi
 
 # Log the pick (existing functionality)
