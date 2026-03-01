@@ -336,6 +336,15 @@ mkdir -p "$LOG_DIR"
 
 MOOD="${1:-day}"
 
+# Check for expired priority overrides (auto-restore mood)
+python3 -c "
+import sys; sys.path.insert(0, '$SCRIPT_DIR')
+from priority_override import load_active_override
+from pathlib import Path
+result = load_active_override(Path('$SCRIPT_DIR'))
+# load_active_override auto-clears expired overrides
+" 2>/dev/null || true
+
 # Min-interval guard: skip if last pick was less than 30 seconds ago
 DECISIONS_FILE="$LOG_DIR/decisions.json"
 if [[ -f "$DECISIONS_FILE" ]]; then

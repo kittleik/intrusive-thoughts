@@ -1,11 +1,50 @@
 {
   "critical": [
     "human-request",
-    "system-alert", 
+    "system-alert",
     "deadline"
   ],
   "high": [
     "bug-report",
     "security"
-  ]
+  ],
+  "patterns": {
+    "system-down": {
+      "level": "critical",
+      "keywords": ["server down", "service crashed", "critical error", "system failure", "production down", "outage"],
+      "override_mood": "determined",
+      "duration_minutes": 120
+    },
+    "security-alert": {
+      "level": "critical",
+      "keywords": ["security breach", "unauthorized access", "vulnerability found", "compromised", "malicious"],
+      "regex": "CVE-\\d{4}-\\d+",
+      "override_mood": "determined",
+      "duration_minutes": 180
+    },
+    "urgent-human": {
+      "level": "critical",
+      "keywords": ["urgent", "asap", "emergency", "right now", "immediately"],
+      "override_mood": "determined",
+      "duration_minutes": 60
+    },
+    "build-failure": {
+      "level": "high",
+      "keywords": ["build failed", "ci failed", "tests failing", "deploy failed", "pipeline broken"],
+      "override_mood": "determined",
+      "duration_minutes": 60
+    },
+    "data-loss": {
+      "level": "critical",
+      "keywords": ["data loss", "corrupted", "database down", "backup failed"],
+      "override_mood": "determined",
+      "duration_minutes": 120
+    }
+  },
+  "override": {
+    "default_mood": "determined",
+    "default_duration_minutes": 60,
+    "max_duration_minutes": 360,
+    "auto_restore": true
+  }
 }
